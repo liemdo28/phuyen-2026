@@ -26,7 +26,7 @@ def test_start_command_has_welcome_reply() -> None:
     reply = orchestrator._command_reply(build_message("/start"), "/start")
     assert reply is not None
     assert "Xin chào Liem" in reply
-    assert "build railway-production" in reply
+    assert "build production" in reply
 
 
 def test_id_command_returns_user_info() -> None:

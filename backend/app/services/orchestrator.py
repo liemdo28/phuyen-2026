@@ -147,7 +147,7 @@ class TelegramOrchestrator:
                 "• danh sách cần đem | còn gì chưa đem\n"
                 "• đã đem ô, thuốc, kem chống nắng\n\n"
                 "/xem  /tong  /baocao  /id\n\n"
-                f"build railway-{build_label}"
+                f"build {build_label}"
             )
         if text == "/id":
             username = f"@{message.from_user.username}" if message.from_user.username else "@(chưa có)"
