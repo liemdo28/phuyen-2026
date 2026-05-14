@@ -6,8 +6,8 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '18'
       - run: npm install -g @google/clasp@3.3.0
@@ -15,4 +15,34 @@ jobs:
         env:
           CLASP_CREDS_B64: ${{ secrets.CLASP_CREDENTIALS }}
         run: echo "$CLASP_CREDS_B64" | base64 -d > ~/.clasprc.json
-      - run: clasp push --force
+      - name: Push source to Apps Script
+        run: clasp push --force
+      - name: Create script version
+        id: create_version
+        shell: bash
+        run: |
+          set -euo pipefail
+          DESC="GitHub Actions ${GITHUB_SHA::7} run ${GITHUB_RUN_NUMBER}"
+          OUTPUT="$(clasp version "$DESC")"
+          echo "$OUTPUT"
+          VERSION_NUMBER="$(echo "$OUTPUT" | sed -n 's/.*Created version \([0-9][0-9]*\).*/\1/p' | tail -n 1)"
+          if [ -z "$VERSION_NUMBER" ]; then
+            echo "Could not parse Apps Script version number from clasp output."
+            exit 1
+          fi
+          echo "description=$DESC" >> "$GITHUB_OUTPUT"
+          echo "version_number=$VERSION_NUMBER" >> "$GITHUB_OUTPUT"
+      - name: Redeploy Web App
+        env:
+          APPS_SCRIPT_DEPLOYMENT_ID: ${{ secrets.APPS_SCRIPT_DEPLOYMENT_ID }}
+          VERSION_NUMBER: ${{ steps.create_version.outputs.version_number }}
+          DESCRIPTION: ${{ steps.create_version.outputs.description }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${APPS_SCRIPT_DEPLOYMENT_ID:-}" ]; then
+            echo "Missing GitHub secret APPS_SCRIPT_DEPLOYMENT_ID."
+            echo "Create the Web App deployment once in Apps Script, then store its deployment ID in GitHub Secrets."
+            exit 1
+          fi
+          clasp redeploy "$APPS_SCRIPT_DEPLOYMENT_ID" "$VERSION_NUMBER" "$DESCRIPTION"
