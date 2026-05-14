@@ -23,6 +23,9 @@ const CFG = {
   },
 
   skipSheets: ['Chi Tiêu','Tổng Hợp','Góp Tiền Trước','Thời Tiết','Gợi Ý Lịch Trình','⚙️ Bot Config'],
+
+  // Khách sạn / resort — cập nhật lat/lon đúng khi biết địa chỉ thật
+  resort: { lat: 13.0955, lon: 109.3028, name: 'Khách sạn Tuy Hòa' },
 };
 
 const WX_LABEL = {
@@ -104,6 +107,8 @@ function dailyAutoUpdate() {
 // ════════════════════════════════════════════════════════
 function setup() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
+  makeQuanAnSheet(ss);
+  makePhaIDemSheet(ss);
   makeGopTienSheet(ss);
   makeChiTieuSheet(ss);
   makeTongHopSheet(ss);
@@ -111,6 +116,8 @@ function setup() {
   reorderSheets(ss);
   SpreadsheetApp.getUi().alert(
     '✅ Khởi tạo xong!\n\n' +
+    '• "Quán Ăn" → danh sách quán, bot tìm theo vị trí\n' +
+    '• "Phải Đem" → checklist đồ đem, bot check/update\n' +
     '• "Góp Tiền Trước" → khoản đã góp\n' +
     '• "Chi Tiêu" → nhập hàng ngày\n' +
     '• "Tổng Hợp" → kết quả tự động\n' +
@@ -280,7 +287,7 @@ function buildSummary(s) {
 }
 
 function reorderSheets(ss) {
-  ['⚙️ Bot Config','Góp Tiền Trước','Chi Tiêu','Tổng Hợp','Thời Tiết','Gợi Ý Lịch Trình']
+  ['⚙️ Bot Config','Quán Ăn','Phải Đem','Góp Tiền Trước','Chi Tiêu','Tổng Hợp','Thời Tiết','Gợi Ý Lịch Trình']
     .forEach((n,i) => {
       const sh = ss.getSheetByName(n);
       if (sh) { ss.setActiveSheet(sh); ss.moveActiveSheet(i+1); }
@@ -331,6 +338,126 @@ function openHuongDan() {
     '5. Menu → ⏰ Bật 5h sáng  +  🔔 Bật nhắc 20h tối\n\n' +
     '⚠️ Sau mỗi lần deploy mới → cài lại Webhook!'
   );
+}
+
+// ════════════════════════════════════════════════════════
+//  SHEET QUÁN ĂN
+//  Cột: STT | Tên quán | Khu vực | Loại | Giá(k/ng) | Lat | Lon | Trên đường về | Ghi chú
+// ════════════════════════════════════════════════════════
+function makeQuanAnSheet(ss) {
+  let s = ss.getSheetByName('Quán Ăn');
+  const isNew = !s;
+  if (isNew) s = ss.insertSheet('Quán Ăn');
+
+  let savedRows = null;
+  if (!isNew && s.getLastRow() > 1)
+    savedRows = s.getRange(2, 1, s.getLastRow() - 1, 9).getValues();
+
+  s.clear();
+  s.getRange('A1').setValue('🍜 DANH SÁCH QUÁN ĂN PHÚ YÊN').setFontSize(13).setFontWeight('bold');
+  s.getRange('A1:I1').merge();
+  s.getRange('A2:I2')
+    .setValues([['STT','Tên quán','Khu vực','Loại','Giá (k/ng)','Lat','Lon','Đường về','Ghi chú']])
+    .setBackground('#2d3748').setFontColor('#fff').setFontWeight('bold').setHorizontalAlignment('center');
+
+  const defaults = [
+    [1,'Quán Bún Cá Ngừ Bà Hai','Tuy Hòa','🍜 Bún/Mì',40,13.0982,109.2970,'✅','Must try — cá ngừ đại dương tươi'],
+    [2,'Bánh Căn Ngọc Lan','Tuy Hòa','🥞 Bánh',30,13.0962,109.2958,'✅','Sáng sớm 6h–9h'],
+    [3,'Bún Sứa Đặc Sản','Tuy Hòa','🍜 Bún/Mì',35,13.0935,109.2962,'✅','Phải thử ở Phú Yên'],
+    [4,'Bánh Hỏi Lòng Heo','Tuy Hòa','🍽️ Đặc sản',45,13.0948,109.2975,'✅',''],
+    [5,'Mì Quảng Bà Mua','Tuy Hòa','🍜 Bún/Mì',35,13.0965,109.2980,'✅',''],
+    [6,'Hải Sản Sông Biển','Tuy Hòa','🦞 Hải sản',150,13.0945,109.3150,'✅','Tôm hùm, mực nướng'],
+    [7,'Sò Huyết Ô Loan','Sông Cầu','🦞 Hải sản',80,13.4200,109.2500,'','Gần Đầm Ô Loan — đặc sản'],
+    [8,'Tôm Hùm Sông Cầu','Sông Cầu','🦞 Hải sản',200,13.4050,109.2420,'','Ngon nhất vùng'],
+    [9,'Quán Hải Sản Gành Đá Đĩa','Sông Cầu','🦞 Hải sản',120,14.3880,109.2160,'','Gần Gành Đá Đĩa'],
+    [10,'Cafe Biển Bãi Xép','Bãi Xép','☕ Cà phê',30,13.0150,109.3280,'','View biển đẹp'],
+  ];
+
+  const rows = savedRows || defaults;
+  s.getRange(3, 1, rows.length, 9).setValues(rows);
+  s.getRange(3, 5, rows.length, 1).setNumberFormat('#,##0 "k"');
+  s.getRange(3, 6, rows.length, 2).setNumberFormat('0.0000').setFontColor('#a0aec0');
+
+  // Alternate row colors
+  for (let r = 3; r < 3 + rows.length; r++)
+    if (r % 2 === 1) s.getRange(r, 1, 1, 9).setBackground('#f7fafc');
+
+  s.getRange(3, 8, rows.length, 1).setHorizontalAlignment('center');
+  [45,200,100,100,90,80,80,100,220].forEach((w,i) => s.setColumnWidth(i+1,w));
+  s.setFrozenRows(2);
+
+  if (!isNew && savedRows)
+    s.getRange(3, 6, rows.length, 2).setNumberFormat('0.0000').setFontColor('#a0aec0');
+}
+
+// ════════════════════════════════════════════════════════
+//  SHEET PHẢI ĐEM
+//  Cột: STT | Đồ vật | Nhóm | Số lượng | Đã đem (checkbox) | Ghi chú
+// ════════════════════════════════════════════════════════
+function makePhaIDemSheet(ss) {
+  let s = ss.getSheetByName('Phải Đem');
+  const isNew = !s;
+  if (isNew) s = ss.insertSheet('Phải Đem');
+
+  let savedRows = null;
+  if (!isNew && s.getLastRow() > 2)
+    savedRows = s.getRange(3, 1, s.getLastRow() - 2, 6).getValues();
+
+  s.clear();
+  s.getRange('A1').setValue('📦 DANH SÁCH ĐỒ CẦN ĐEM').setFontSize(13).setFontWeight('bold');
+  s.getRange('A1:F1').merge();
+  s.getRange('A2').setValue('💡 Tick ô "Đã đem" để đánh dấu — hoặc nhắn bot: "đã đem ô, thuốc, kem chống nắng"')
+    .setFontColor('#718096').setFontStyle('italic').setFontSize(9);
+  s.getRange('A2:F2').merge().setBackground('#ebf8ff');
+  s.getRange('A3:F3')
+    .setValues([['STT','Đồ vật','Nhóm phụ trách','Số lượng','Đã đem','Ghi chú']])
+    .setBackground('#2d3748').setFontColor('#fff').setFontWeight('bold').setHorizontalAlignment('center');
+
+  const defaults = [
+    [1,'Kem chống nắng SPF50+','Nhóm LV','2 chai',false,'Cho bé + người lớn — BẮT BUỘC'],
+    [2,'Áo phao trẻ em','Nhóm LV','1',false,'BẮT BUỘC khi tắm biển'],
+    [3,'Thuốc hạ sốt (Paracetamol)','Nhóm LV','1 hộp',false,''],
+    [4,'Thuốc say xe','Nhóm LV','1 hộp',false,'Uống trước 30 phút'],
+    [5,'Băng cứu thương','Nhóm LV','1 hộp',false,''],
+    [6,'Thuốc tiêu chảy','Nhóm LV','1 hộp',false,''],
+    [7,'Ô / dù (chống nắng + mưa)','Nhóm LH','2',false,''],
+    [8,'Kính râm','Nhóm LH','Đủ dùng',false,''],
+    [9,'Nón/mũ rộng vành','Nhóm LH','Đủ dùng',false,''],
+    [10,'Dép biển / sandal','Nhóm LH','Đủ dùng',false,''],
+    [11,'Đồ chơi / sách cho bé','Nhóm LH','Đủ',false,'Cho chặng đường dài'],
+    [12,'Sạc điện thoại + cáp','Nhóm CM','Đủ',false,''],
+    [13,'Powerbank','Nhóm CM','2',false,''],
+    [14,'Túi lạnh đựng đồ uống','Nhóm CM','1',false,''],
+    [15,'Tiền mặt dự phòng','Nhóm CM','Đủ',false,'ATM ít ở vùng biển'],
+    [16,'Giấy tờ xe (đăng ký, bảo hiểm)','Nhóm LV','1 bộ',false,'BẮT BUỘC'],
+    [17,'Quần áo đi biển','Chung','Đủ dùng',false,''],
+    [18,'Túi nilon chống nước','Chung','Vài cái',false,'Cho điện thoại, giấy tờ'],
+  ];
+
+  const rows = savedRows || defaults;
+  s.getRange(4, 1, rows.length, 6).setValues(rows);
+
+  // Checkbox cho cột E (Đã đem)
+  s.getRange(4, 5, rows.length, 1).setDataValidation(
+    SpreadsheetApp.newDataValidation().requireCheckbox().build()
+  ).setHorizontalAlignment('center');
+
+  // Dropdown nhóm cột C
+  s.getRange(4, 3, rows.length, 1).setDataValidation(
+    SpreadsheetApp.newDataValidation()
+      .requireValueInList(['Nhóm LV','Nhóm LH','Nhóm CM','Chung'], true)
+      .build()
+  );
+
+  // Màu xen kẽ + highlight BẮT BUỘC
+  for (let r = 4; r < 4 + rows.length; r++) {
+    const note = String(s.getRange(r, 6).getValue());
+    if (note.includes('BẮT BUỘC')) s.getRange(r, 1, 1, 6).setBackground('#fff5f5');
+    else if (r % 2 === 0) s.getRange(r, 1, 1, 6).setBackground('#f7fafc');
+  }
+
+  [45,220,110,90,75,200].forEach((w,i) => s.setColumnWidth(i+1,w));
+  s.setFrozenRows(3);
 }
 
 // ════════════════════════════════════════════════════════
@@ -701,10 +828,11 @@ function handleMessage(msg) {
 
   if (text === '/start' || text === '/help') {
     sendTG(cfg.token, chatId,
-      `👋 Xin chào ${firstName}!\n\nNhắn để ghi chi tiêu:\n` +
-      `• <b>500k ăn tối</b>\n• <b>1.5tr tiền phòng</b>\n• <b>300k xăng dầu</b>\n• <b>24/5 - 800k ăn hải sản</b>\n\n` +
-      `📸 Gửi <b>ảnh hoá đơn</b> → bot tự đọc số tiền\n\n` +
-      `/xem — 5 khoản gần nhất\n/tong — tổng chi từng nhóm\n/baocao — chi tiêu hôm nay\n/id — xem Telegram ID của bạn`
+      `👋 Xin chào ${firstName}!\n\n` +
+      `💰 <b>Ghi chi tiêu:</b>\n• 500k ăn tối  |  1.5tr tiền phòng  |  24/5 - 300k xăng\n• 📸 Gửi ảnh hoá đơn → bot tự đọc\n\n` +
+      `🍜 <b>Tìm quán ăn</b> (gửi 📍 vị trí trước):\n• quán gần tôi nhất\n• trên đường về, quán nào ngon\n\n` +
+      `📦 <b>Đồ cần đem:</b>\n• danh sách cần đem  |  còn gì chưa đem\n• đã đem ô, thuốc, kem chống nắng\n\n` +
+      `/xem  /tong  /baocao  /id`
     );
     return;
   }
@@ -721,6 +849,21 @@ function handleMessage(msg) {
   // Ảnh hoá đơn
   if (msg.photo) { handlePhoto(msg, cfg); return; }
 
+  // Vị trí (Location pin)
+  if (msg.location) { handleLocation(msg, cfg); return; }
+
+  const t = text.toLowerCase();
+
+  // Quán ăn — phải kiểm tra trước expense vì có chữ "ăn"
+  if (/tìm quán|quán gần|gần nhất|đường về|trên đường.*quán|quán.*ngon|nhà hàng gần/.test(t)) {
+    handleRestaurantQuery(msg, cfg); return;
+  }
+
+  // Đồ cần đem
+  if (/^đã đem|chưa đem|còn thiếu|còn gì.*đem|danh sách.*đem|cần đem|phải đem|đem theo|list đem/.test(t)) {
+    handlePackingQuery(msg, cfg, text); return;
+  }
+
   const userInfo =
     (userId   && cfg.byUserId[userId])   ||
     (username && cfg.byUsername[username]) ||
@@ -735,7 +878,13 @@ function handleMessage(msg) {
 
   const expense = parseTGExpense(text, userInfo.group);
   if (!expense) {
-    sendTG(cfg.token, chatId, `❓ Không nhận ra số tiền.\n\nThử: <b>"500k ăn tối"</b> hoặc <b>"1.5tr tiền phòng"</b>`);
+    sendTG(cfg.token, chatId,
+      `❓ Không hiểu tin nhắn này.\n\n` +
+      `💰 Ghi chi tiêu: <b>500k ăn tối</b>\n` +
+      `🍜 Tìm quán: <b>quán gần tôi nhất</b>\n` +
+      `📦 Đồ đem: <b>danh sách cần đem</b> / <b>còn gì chưa đem</b>\n` +
+      `✅ Đánh dấu: <b>đã đem ô, thuốc, dép</b>`
+    );
     return;
   }
 
@@ -839,6 +988,201 @@ function handlePhoto(msg, cfg) {
     Logger.log(e);
     sendTG(cfg.token, chatId, '❌ Lỗi khi đọc ảnh. Thử nhắn thủ công.');
   }
+}
+
+// ════════════════════════════════════════════════════════
+//  📍 VỊ TRÍ + TÌM QUÁN ĂN
+// ════════════════════════════════════════════════════════
+function handleLocation(msg, cfg) {
+  const chatId = msg.chat.id;
+  const { latitude, longitude } = msg.location;
+  PropertiesService.getScriptProperties()
+    .setProperty(`loc_${chatId}`, JSON.stringify({ lat: latitude, lon: longitude }));
+  sendTG(cfg.token, chatId,
+    `📍 Đã lưu vị trí!\n\nBây giờ hỏi:\n` +
+    `• <b>quán gần tôi nhất</b>\n• <b>trên đường về, quán nào ngon</b>`
+  );
+}
+
+function handleRestaurantQuery(msg, cfg) {
+  const chatId = msg.chat.id;
+  const text   = (msg.text || '').toLowerCase();
+  const locStr = PropertiesService.getScriptProperties().getProperty(`loc_${chatId}`);
+
+  if (!locStr) {
+    sendTG(cfg.token, chatId,
+      '📍 Gửi vị trí trước để tôi tìm quán!\n\n' +
+      'Trong Telegram: <b>📎 → Location</b> (hoặc 📎 → Share location)'
+    );
+    return;
+  }
+
+  const { lat, lon } = JSON.parse(locStr);
+  const restaurants  = getRestaurantData();
+  if (!restaurants.length) {
+    sendTG(cfg.token, chatId, '❌ Sheet "Quán Ăn" chưa có dữ liệu. Chạy menu Khởi tạo trước.');
+    return;
+  }
+
+  const isRouteQuery = /đường về|trên đường/.test(text);
+  const results = isRouteQuery
+    ? findAlongRoute(restaurants, lat, lon)
+    : findNearestRestaurants(restaurants, lat, lon);
+
+  if (!results.length) {
+    sendTG(cfg.token, chatId, '🔍 Không tìm thấy quán nào phù hợp.');
+    return;
+  }
+
+  const title = isRouteQuery
+    ? `🛣️ <b>Quán trên đường về ${CFG.resort.name}:</b>\n`
+    : `📍 <b>Quán gần bạn nhất:</b>\n`;
+
+  const lines = [title];
+  results.slice(0, 5).forEach((r, i) => {
+    lines.push(`${i+1}. <b>${r.name}</b> (${r.area})`);
+    lines.push(`   ${r.type} · ~${r.price}k/người · 📏 ${r.dist.toFixed(1)}km`);
+    if (r.note) lines.push(`   💬 ${r.note}`);
+  });
+  lines.push('\n💡 Gửi lại 📍 vị trí để cập nhật.');
+  sendTG(cfg.token, chatId, lines.join('\n'));
+}
+
+function getRestaurantData() {
+  const s = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Quán Ăn');
+  if (!s || s.getLastRow() < 3) return [];
+  return s.getRange(3, 1, s.getLastRow() - 2, 9).getValues()
+    .filter(r => r[1])
+    .map(r => ({
+      name: String(r[1]), area: String(r[2]), type: String(r[3]),
+      price: r[4] || 0, lat: r[5], lon: r[6], onRoute: r[7], note: String(r[8]),
+    }));
+}
+
+function haversine(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2)**2
+    + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLon/2)**2;
+  return R * 2 * Math.asin(Math.sqrt(a));
+}
+
+function findNearestRestaurants(restaurants, lat, lon) {
+  return restaurants
+    .filter(r => r.lat && r.lon)
+    .map(r => ({ ...r, dist: haversine(lat, lon, r.lat, r.lon) }))
+    .sort((a, b) => a.dist - b.dist);
+}
+
+function findAlongRoute(restaurants, fromLat, fromLon) {
+  const { lat: toLat, lon: toLon } = CFG.resort;
+  const direct = haversine(fromLat, fromLon, toLat, toLon);
+  return restaurants
+    .filter(r => r.lat && r.lon)
+    .map(r => {
+      const dist   = haversine(fromLat, fromLon, r.lat, r.lon);
+      const detour = dist + haversine(r.lat, r.lon, toLat, toLon) - direct;
+      return { ...r, dist, detour };
+    })
+    .filter(r => r.detour < Math.max(5, direct * 0.25)) // ≤25% hoặc 5km chênh lệch
+    .sort((a, b) => a.detour - b.detour);
+}
+
+// ════════════════════════════════════════════════════════
+//  📦 DANH SÁCH ĐỒ CẦN ĐEM
+// ════════════════════════════════════════════════════════
+function handlePackingQuery(msg, cfg, text) {
+  const chatId = msg.chat.id;
+  const t      = text.toLowerCase();
+
+  if (/^đã đem/.test(t)) {
+    const raw   = text.replace(/^đã đem\s*/i, '').replace(/\bvà\b/gi, ',');
+    const items = raw.split(/[,;]+/).map(s => s.trim()).filter(Boolean);
+    markPacked(cfg, chatId, items);
+  } else if (/chưa đem|còn thiếu|còn gì/.test(t)) {
+    listUnpacked(cfg, chatId);
+  } else {
+    listAllPacking(cfg, chatId);
+  }
+}
+
+function getPackingData() {
+  const s = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Phải Đem');
+  if (!s || s.getLastRow() < 4) return [];
+  return s.getRange(4, 1, s.getLastRow() - 3, 6).getValues()
+    .filter(r => r[1])
+    .map((r, i) => ({
+      row    : i + 4,
+      name   : String(r[1]),
+      group  : String(r[2]),
+      qty    : String(r[3]),
+      packed : r[4] === true,
+      note   : String(r[5]),
+    }));
+}
+
+function listAllPacking(cfg, chatId) {
+  const items = getPackingData();
+  if (!items.length) { sendTG(cfg.token, chatId, '❌ Sheet "Phải Đem" chưa có dữ liệu.'); return; }
+
+  const byGroup = {};
+  items.forEach(i => { (byGroup[i.group] = byGroup[i.group] || []).push(i); });
+
+  const lines = ['📦 <b>Danh sách đồ cần đem:</b>\n'];
+  Object.entries(byGroup).forEach(([grp, gItems]) => {
+    lines.push(`<b>${grp}:</b>`);
+    gItems.forEach(i => lines.push(`  ${i.packed ? '✅' : '⬜'} ${i.name}${i.qty ? ' ('+i.qty+')' : ''}`));
+  });
+  const packed = items.filter(i => i.packed).length;
+  lines.push(`\n📊 <b>${packed}/${items.length}</b> đã đem`);
+  sendTG(cfg.token, chatId, lines.join('\n'));
+}
+
+function listUnpacked(cfg, chatId) {
+  const items = getPackingData().filter(i => !i.packed);
+  if (!items.length) { sendTG(cfg.token, chatId, '✅ Tất cả đã đem đủ rồi! 🎉'); return; }
+
+  const byGroup = {};
+  items.forEach(i => { (byGroup[i.group] = byGroup[i.group] || []).push(i); });
+
+  const lines = [`⬜ <b>Chưa đem (${items.length} món):</b>\n`];
+  Object.entries(byGroup).forEach(([grp, gItems]) => {
+    lines.push(`<b>${grp}:</b>`);
+    gItems.forEach(i => {
+      const urgent = i.note.includes('BẮT BUỘC') ? ' ⚠️' : '';
+      lines.push(`  • ${i.name}${i.qty ? ' ('+i.qty+')' : ''}${urgent}`);
+    });
+  });
+  lines.push('\nNhắn: <b>đã đem [tên đồ]</b> để đánh dấu');
+  sendTG(cfg.token, chatId, lines.join('\n'));
+}
+
+function markPacked(cfg, chatId, itemNames) {
+  const s = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Phải Đem');
+  if (!s) { sendTG(cfg.token, chatId, '❌ Sheet "Phải Đem" chưa có.'); return; }
+
+  const items    = getPackingData();
+  const marked   = [];
+  const notFound = [];
+
+  itemNames.forEach(query => {
+    const q = query.toLowerCase().trim();
+    const match = items.find(i =>
+      i.name.toLowerCase().includes(q) || q.includes(i.name.toLowerCase().split(' ')[0])
+    );
+    if (match) {
+      s.getRange(match.row, 5).setValue(true);
+      marked.push(match.name);
+    } else {
+      notFound.push(query);
+    }
+  });
+
+  let reply = '';
+  if (marked.length)   reply += `✅ Đã đánh dấu đem:\n${marked.map(m => `• ${m}`).join('\n')}`;
+  if (notFound.length) reply += `${reply ? '\n\n' : ''}❓ Không tìm thấy:\n${notFound.map(m => `• ${m}`).join('\n')}\n\n💡 Thử: <b>danh sách cần đem</b> để xem đúng tên`;
+  sendTG(cfg.token, chatId, reply || '❓ Không tìm thấy món nào.');
 }
 
 // ════════════════════════════════════════════════════════
