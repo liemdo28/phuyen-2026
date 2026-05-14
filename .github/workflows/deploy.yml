@@ -13,6 +13,6 @@ jobs:
       - run: npm install -g @google/clasp
       - name: Write credentials
         env:
-          CLASP_CREDS: ${{ secrets.CLASP_CREDENTIALS }}
-        run: echo "$CLASP_CREDS" > ~/.clasprc.json
+          CLASP_CREDS_B64: ${{ secrets.CLASP_CREDENTIALS }}
+        run: echo "$CLASP_CREDS_B64" | base64 -d > ~/.clasprc.json
       - run: clasp push --force
