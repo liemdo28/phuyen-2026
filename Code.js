@@ -5,6 +5,7 @@
 // ════════════════════════════════════════════════════════
 
 const CFG = {
+  botBuild  : '2026-05-14-telefix-02',
   tripStart : '2026-05-23',
   tripEnd   : '2026-05-27',
   days      : ['23/05 (T7)','24/05 (CN)','25/05 (T2)','26/05 (T3)','27/05 (T4)'],
@@ -57,6 +58,7 @@ function onOpen() {
     .addSeparator()
     .addItem('📱 Tạo sheet Bot Config',          'setupBotConfigSheet')
     .addItem('🔗 Cài đặt Webhook Telegram',      'setupTelegramWebhook')
+    .addItem('🧹 Xoá pending updates Telegram',  'clearTelegramPendingUpdates')
     .addSeparator()
     .addItem('☀️ Bật tin nhắn sáng 6h',         'setupMorningBriefingTrigger')
     .addItem('🔔 Bật nhắc nhở 20h tối',         'setupEveningReminderTrigger')
@@ -803,7 +805,7 @@ function setupBotConfigSheet() {
 function loadConfig() {
   const s = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('⚙️ Bot Config');
   if (!s) throw new Error('Chưa tạo Bot Config. Chạy setupBotConfigSheet() trước.');
-  const token      = String(s.getRange('B4').getValue()).trim();
+  const token      = getBotToken(true);
   const defaultGrp = String(s.getRange('B8').getValue()).trim() || 'Nhóm LV';
   const rows       = s.getRange('A13:D62').getValues();
   const byUsername = {}, byUserId = {};
@@ -816,41 +818,110 @@ function loadConfig() {
   return { token, defaultGrp, byUsername, byUserId };
 }
 
+function getBotToken(forceRefresh) {
+  const cache = CacheService.getScriptCache();
+  if (!forceRefresh) {
+    const cached = cache.get('tg_bot_token');
+    if (cached) return cached;
+  }
+
+  const props = PropertiesService.getScriptProperties();
+  if (!forceRefresh) {
+    const saved = props.getProperty('tg_bot_token');
+    if (saved) {
+      cache.put('tg_bot_token', saved, 21600);
+      return saved;
+    }
+  }
+
+  const s = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('⚙️ Bot Config');
+  if (!s) throw new Error('Chưa tạo Bot Config. Chạy setupBotConfigSheet() trước.');
+  const token = String(s.getRange('B4').getValue()).trim();
+  if (!token) throw new Error('Chưa nhập Telegram Bot Token trong sheet "⚙️ Bot Config".');
+
+  props.setProperty('tg_bot_token', token);
+  cache.put('tg_bot_token', token, 21600);
+  return token;
+}
+
 function doPost(e) {
   try {
     const update = JSON.parse(e.postData.contents);
+    if (isDuplicateTelegramUpdate(update)) {
+      return ContentService.createTextOutput('OK');
+    }
     if (update.message) handleMessage(update.message);
   } catch(err) { Logger.log(err); }
   return ContentService.createTextOutput('OK');
 }
 
-function handleMessage(msg) {
-  let cfg;
-  try { cfg = loadConfig(); } catch(err) { Logger.log(err); return; }
+function isDuplicateTelegramUpdate(update) {
+  const updateId = Number(update && update.update_id);
+  const msg = update && update.message;
+  const fingerprint = msg
+    ? [
+        String(updateId || ''),
+        String(msg.chat && msg.chat.id || ''),
+        String(msg.message_id || ''),
+        String(msg.date || ''),
+        String(msg.text || msg.caption || msg.location ? 'payload' : ''),
+      ].join(':')
+    : '';
+  if (!Number.isFinite(updateId) && !fingerprint) return false;
 
+  const lock = LockService.getScriptLock();
+  lock.waitLock(5000);
+  try {
+    const props = PropertiesService.getScriptProperties();
+    const last  = Number(props.getProperty('tg_last_update_id') || '');
+    const seen  = JSON.parse(props.getProperty('tg_recent_fingerprints') || '[]');
+    if (fingerprint && seen.includes(fingerprint)) return true;
+    if (Number.isFinite(last) && Number.isFinite(updateId) && updateId <= last) return true;
+    if (Number.isFinite(updateId)) props.setProperty('tg_last_update_id', String(updateId));
+    if (fingerprint) {
+      seen.push(fingerprint);
+      props.setProperty('tg_recent_fingerprints', JSON.stringify(seen.slice(-20)));
+    }
+    return false;
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function handleMessage(msg) {
   const chatId   = msg.chat.id;
   const from     = msg.from;
   const userId   = String(from.id || '');
   const username = (from.username || '').toLowerCase().trim();
   const firstName= from.first_name || '';
   const text     = (msg.text || '').trim();
+  const isHelpCommand = text === '/start' || text === '/help';
+  const isIdCommand   = text === '/id';
 
-  if (text === '/start' || text === '/help') {
-    sendTG(cfg.token, chatId,
-      `👋 Xin chào ${firstName}!\n\n` +
-      `💰 <b>Ghi chi tiêu:</b>\n• 500k ăn tối  |  1.5tr tiền phòng  |  24/5 - 300k xăng\n• 📸 Gửi ảnh hoá đơn → bot tự đọc\n\n` +
-      `🍜 <b>Tìm quán ăn</b> (gửi 📍 vị trí trước):\n• quán gần tôi nhất\n• trên đường về, quán nào ngon\n\n` +
-      `📦 <b>Đồ cần đem:</b>\n• danh sách cần đem  |  còn gì chưa đem\n• đã đem ô, thuốc, kem chống nắng\n\n` +
-      `/xem  /tong  /baocao  /id`
+  if (isHelpCommand || isIdCommand) {
+    let token;
+    try { token = getBotToken(); } catch(err) { Logger.log(err); return; }
+
+    if (isHelpCommand) {
+      sendTG(token, chatId,
+        `👋 Xin chào ${firstName}!\n\n` +
+        `💰 <b>Ghi chi tiêu:</b>\n• 500k ăn tối  |  1.5tr tiền phòng  |  24/5 - 300k xăng\n• 📸 Gửi ảnh hoá đơn → bot tự đọc\n\n` +
+        `🍜 <b>Tìm quán ăn</b> (gửi 📍 vị trí trước):\n• quán gần tôi nhất\n• trên đường về, quán nào ngon\n\n` +
+        `📦 <b>Đồ cần đem:</b>\n• danh sách cần đem  |  còn gì chưa đem\n• đã đem ô, thuốc, kem chống nắng\n\n` +
+        `/xem  /tong  /baocao  /id\n\n` +
+        `<i>build ${CFG.botBuild}</i>`
+      );
+      return;
+    }
+
+    sendTG(token, chatId,
+      `🪪 Thông tin:\n\nUsername: @${username||'(chưa có)'}\nUser ID: <code>${userId}</code>\n\nCopy ID → paste vào cột B sheet "⚙️ Bot Config"\n\n<i>build ${CFG.botBuild}</i>`
     );
     return;
   }
-  if (text === '/id') {
-    sendTG(cfg.token, chatId,
-      `🪪 Thông tin:\n\nUsername: @${username||'(chưa có)'}\nUser ID: <code>${userId}</code>\n\nCopy ID → paste vào cột B sheet "⚙️ Bot Config"`
-    );
-    return;
-  }
+
+  let cfg;
+  try { cfg = loadConfig(); } catch(err) { Logger.log(err); return; }
   if (text === '/xem')    { sendRecentExpenses(cfg, chatId); return; }
   if (text === '/tong')   { sendSummary(cfg, chatId); return; }
   if (text === '/baocao') { sendDailyReport(cfg, chatId); return; }
@@ -1498,14 +1569,45 @@ function setupTelegramWebhook() {
     return;
   }
 
+  resetTelegramUpdateState_();
+  try {
+    UrlFetchApp.fetch(
+      `https://api.telegram.org/bot${cfg.token}/deleteWebhook?drop_pending_updates=true`,
+      { muteHttpExceptions:true }
+    );
+  } catch (e) {
+    Logger.log(e);
+  }
+
   const res  = UrlFetchApp.fetch(
-    `https://api.telegram.org/bot${cfg.token}/setWebhook?url=${encodeURIComponent(url)}`,
+    `https://api.telegram.org/bot${cfg.token}/setWebhook?url=${encodeURIComponent(url)}&drop_pending_updates=true`,
     { muteHttpExceptions:true }
   );
   const json = JSON.parse(res.getContentText());
   SpreadsheetApp.getUi().alert(
     json.ok
-      ? `✅ Webhook kết nối thành công!\n\nURL: ${url}\n\nMở Telegram nhắn /start để test.`
+      ? `✅ Webhook kết nối thành công!\n\nURL: ${url}\n\nĐã xoá pending updates cũ.\nMở Telegram nhắn /start để test.`
       : '❌ Lỗi: ' + json.description + '\n\nKiểm tra lại token và URL.'
   );
+}
+
+function clearTelegramPendingUpdates() {
+  const cfg = loadConfig();
+  const res = UrlFetchApp.fetch(
+    `https://api.telegram.org/bot${cfg.token}/deleteWebhook?drop_pending_updates=true`,
+    { muteHttpExceptions:true }
+  );
+  resetTelegramUpdateState_();
+  const json = JSON.parse(res.getContentText());
+  SpreadsheetApp.getUi().alert(
+    json.ok
+      ? '✅ Đã xoá pending updates Telegram và reset trạng thái dedupe.\n\nBây giờ chạy lại "🔗 Cài đặt Webhook Telegram".'
+      : '❌ Không xoá được pending updates: ' + json.description
+  );
+}
+
+function resetTelegramUpdateState_() {
+  const props = PropertiesService.getScriptProperties();
+  props.deleteProperty('tg_last_update_id');
+  props.deleteProperty('tg_recent_fingerprints');
 }
