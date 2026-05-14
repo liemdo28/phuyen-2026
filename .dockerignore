@@ -1,0 +1,16 @@
+.git
+.github
+.claude
+.venv
+backend/.venv
+backend/.pytest_cache
+backend/.mypy_cache
+backend/.state
+backend/src
+node_modules
+docs
+training
+__pycache__
+*.pyc
+*.pyo
+*.DS_Store
