@@ -1,0 +1,90 @@
+name: Deploy to Cloud Run
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - "Dockerfile"
+      - ".dockerignore"
+      - "backend/**"
+      - ".github/workflows/cloud-run.yml"
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+      CLOUD_RUN_SERVICE: ${{ vars.CLOUD_RUN_SERVICE }}
+      CLOUD_RUN_REGION: ${{ vars.CLOUD_RUN_REGION }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${GCP_PROJECT_ID:-}" ]; then
+            echo "Missing GitHub variable GCP_PROJECT_ID"
+            exit 1
+          fi
+          if [ -z "${CLOUD_RUN_SERVICE:-}" ]; then
+            echo "Missing GitHub variable CLOUD_RUN_SERVICE"
+            exit 1
+          fi
+          if [ -z "${CLOUD_RUN_REGION:-}" ]; then
+            echo "Missing GitHub variable CLOUD_RUN_REGION"
+            exit 1
+          fi
+          if [ -z "${{ secrets.GCP_SA_KEY }}" ]; then
+            echo "Missing GitHub secret GCP_SA_KEY"
+            exit 1
+          fi
+
+      - id: auth
+        uses: google-github-actions/auth@v3
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - uses: google-github-actions/setup-gcloud@v3
+
+      - id: deploy
+        uses: google-github-actions/deploy-cloudrun@v3
+        with:
+          service: ${{ env.CLOUD_RUN_SERVICE }}
+          region: ${{ env.CLOUD_RUN_REGION }}
+          project_id: ${{ env.GCP_PROJECT_ID }}
+          source: .
+          flags: >-
+            --allow-unauthenticated
+            --port=8080
+            --memory=512Mi
+            --cpu=1
+            --max-instances=3
+          env_vars: |
+            APP_ENV=production
+            APP_PORT=8080
+            QUEUE_BACKEND=inline
+            TELEGRAM_BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }}
+            TELEGRAM_WEBHOOK_SECRET=${{ secrets.TELEGRAM_WEBHOOK_SECRET }}
+            OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
+            OPENAI_MODEL=${{ vars.OPENAI_MODEL }}
+            ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}
+            ANTHROPIC_MODEL=${{ vars.ANTHROPIC_MODEL }}
+            DEFAULT_SPREADSHEET_ID=${{ secrets.DEFAULT_SPREADSHEET_ID }}
+            GOOGLE_SERVICE_ACCOUNT_JSON=${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+
+      - name: Show deployed URL
+        shell: bash
+        run: |
+          echo "Cloud Run URL: ${{ steps.deploy.outputs.url }}"
+          {
+            echo "## Cloud Run Deploy"
+            echo
+            echo "- Service: ${CLOUD_RUN_SERVICE}"
+            echo "- Region: ${CLOUD_RUN_REGION}"
+            echo "- URL: ${{ steps.deploy.outputs.url }}"
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -153,6 +153,89 @@ Official pricing:
 
 - https://cloud.google.com/run/pricing
 
+## GitHub Actions Auto Deploy
+
+This repo now includes a dedicated workflow:
+
+- `.github/workflows/cloud-run.yml`
+
+It deploys to Cloud Run automatically on pushes to `main` when backend-related files change.
+
+### Required GitHub Variables
+
+Create these in:
+
+- `Repo -> Settings -> Secrets and variables -> Actions -> Variables`
+
+Variables:
+
+- `GCP_PROJECT_ID`
+- `CLOUD_RUN_SERVICE`
+- `CLOUD_RUN_REGION`
+- `OPENAI_MODEL`
+- `ANTHROPIC_MODEL`
+
+Suggested values:
+
+- `CLOUD_RUN_SERVICE=phuyen-telegram-ai`
+- `CLOUD_RUN_REGION=asia-southeast1`
+- `OPENAI_MODEL=gpt-4.1-mini`
+- `ANTHROPIC_MODEL=claude-3-5-sonnet-latest`
+
+### Required GitHub Secrets
+
+Create these in:
+
+- `Repo -> Settings -> Secrets and variables -> Actions -> Secrets`
+
+Required:
+
+- `GCP_SA_KEY`
+- `TELEGRAM_BOT_TOKEN`
+- `TELEGRAM_WEBHOOK_SECRET`
+
+Optional:
+
+- `OPENAI_API_KEY`
+- `ANTHROPIC_API_KEY`
+- `DEFAULT_SPREADSHEET_ID`
+- `GOOGLE_SERVICE_ACCOUNT_JSON`
+
+### What `GCP_SA_KEY` Should Be
+
+Use a Google Cloud service account JSON key with permissions for Cloud Run deploys.
+
+At minimum, the service account should be able to:
+
+- deploy Cloud Run services
+- run Cloud Build
+- write to Artifact Registry
+
+In practice, many teams start with:
+
+- `Cloud Run Admin`
+- `Cloud Build Editor`
+- `Artifact Registry Writer`
+- `Service Account User`
+
+### First-Time Setup Flow
+
+1. Create the service account in Google Cloud
+2. Generate its JSON key
+3. Save the entire JSON as GitHub secret `GCP_SA_KEY`
+4. Add the GitHub variables and other secrets above
+5. Push to `main` or trigger `workflow_dispatch`
+
+### After Auto Deploy
+
+When the workflow succeeds, it prints the deployed Cloud Run URL in the Actions summary.
+
+Then set Telegram webhook to:
+
+```text
+https://YOUR_CLOUD_RUN_URL/api/telegram/webhook
+```
+
 ## Important Current Limitations
 
 - `QUEUE_BACKEND=inline` is acceptable for MVP rollout, not ideal for long AI jobs
