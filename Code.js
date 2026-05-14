@@ -862,6 +862,7 @@ function doPost(e) {
     }
     if (isRateLimitedTelegramMessage_(update.message)) {
       logTelegramEvent_('rate_limited', update);
+      maybeSendRateLimitNotice_(update.message);
       return ContentService.createTextOutput('OK');
     }
     handleMessage(update.message);
@@ -924,6 +925,25 @@ function isRateLimitedTelegramMessage_(msg) {
   if (current >= limit) return true;
   cache.put(key, String(current + 1), 10);
   return false;
+}
+
+function maybeSendRateLimitNotice_(msg) {
+  const chatId = String(msg && msg.chat && msg.chat.id || '');
+  const text   = String(msg && (msg.text || msg.caption) || '').trim().toLowerCase();
+  if (!chatId) return;
+
+  let token;
+  try { token = getBotToken(); } catch (e) { Logger.log(e); return; }
+
+  const cache = CacheService.getScriptCache();
+  const noticeKey = ['tg_rl_notice', chatId, text || '__nontext__'].join(':');
+  if (cache.get(noticeKey)) return;
+  cache.put(noticeKey, '1', 10);
+
+  const reply = text === '/start'
+    ? 'Mình vừa xử lý `/start` rồi. Đợi vài giây rồi nhắn lại nhé.'
+    : 'Mình vừa nhận lệnh này rồi. Đợi 5–10 giây rồi thử lại nhé.';
+  sendTG(token, Number(chatId), reply);
 }
 
 function handleMessage(msg) {
