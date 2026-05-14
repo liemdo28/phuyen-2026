@@ -22,7 +22,7 @@ const CFG = {
     'Hòn Yến'              : { lat: 13.2500, lon: 109.3000 },
   },
 
-  skipSheets: ['Chi Tiêu','Tổng Hợp','Góp Tiền Trước','Thời Tiết','Gợi Ý Lịch Trình','⚙️ Bot Config','📖 Hướng Dẫn'],
+  skipSheets: ['Chi Tiêu','Tổng Hợp','Góp Tiền Trước','Thời Tiết','Gợi Ý Lịch Trình','⚙️ Bot Config'],
 };
 
 const WX_LABEL = {
@@ -102,7 +102,6 @@ function dailyAutoUpdate() {
 // ════════════════════════════════════════════════════════
 function setup() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  makeHuongDanSheet(ss);
   makeGopTienSheet(ss);
   makeChiTieuSheet(ss);
   makeTongHopSheet(ss);
@@ -110,7 +109,6 @@ function setup() {
   reorderSheets(ss);
   SpreadsheetApp.getUi().alert(
     '✅ Khởi tạo xong!\n\n' +
-    '• "📖 Hướng Dẫn" → cách dùng bot & sheet\n' +
     '• "Góp Tiền Trước" → khoản đã góp\n' +
     '• "Chi Tiêu" → nhập hàng ngày\n' +
     '• "Tổng Hợp" → kết quả tự động\n' +
@@ -280,7 +278,7 @@ function buildSummary(s) {
 }
 
 function reorderSheets(ss) {
-  ['📖 Hướng Dẫn','⚙️ Bot Config','Góp Tiền Trước','Chi Tiêu','Tổng Hợp','Thời Tiết','Gợi Ý Lịch Trình']
+  ['⚙️ Bot Config','Góp Tiền Trước','Chi Tiêu','Tổng Hợp','Thời Tiết','Gợi Ý Lịch Trình']
     .forEach((n,i) => {
       const sh = ss.getSheetByName(n);
       if (sh) { ss.setActiveSheet(sh); ss.moveActiveSheet(i+1); }
@@ -295,87 +293,27 @@ function clearData() {
 }
 
 function openHuongDan() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  let s = ss.getSheetByName('📖 Hướng Dẫn');
-  if (!s) { makeHuongDanSheet(ss); s = ss.getSheetByName('📖 Hướng Dẫn'); }
-  ss.setActiveSheet(s);
-}
-
-function makeHuongDanSheet(ss) {
-  let s = ss.getSheetByName('📖 Hướng Dẫn') || ss.insertSheet('📖 Hướng Dẫn');
-  s.clear();
-  s.setColumnWidth(1, 80);
-  s.setColumnWidth(2, 560);
-
-  const rows = [
-    // [bold, bg, fgColor, fontSize, text col A, text col B]
-    [true,  '#2d3748', '#ffffff', 14, '📖', 'HƯỚNG DẪN SỬ DỤNG — PHÚ YÊN 2026'],
-    [false, '#edf2f7', '#4a5568', 10, '',   'Chuyến đi: 23–27/05/2026 · 7 người · Kia Carnival Diesel'],
-    [false, null,      null,      10, '',   ''],
-
-    [true,  '#4a5568', '#ffffff', 11, '🗂️', 'CÁC SHEET TRONG FILE'],
-    [false, '#f7fafc', null,      10, '📖', 'Hướng Dẫn → bạn đang ở đây'],
-    [false, null,      null,      10, '⚙️', 'Bot Config → token bot + danh sách thành viên Telegram'],
-    [false, '#f7fafc', null,      10, '💵', 'Góp Tiền Trước → số tiền mỗi nhóm đã góp ban đầu'],
-    [false, null,      null,      10, '📋', 'Chi Tiêu → nhập chi tiêu từng ngày (thủ công hoặc qua bot)'],
-    [false, '#f7fafc', null,      10, '📊', 'Tổng Hợp → tự động tính quyết toán cuối chuyến'],
-    [false, null,      null,      10, '🌤️', 'Thời Tiết → dự báo 5 ngày, cập nhật 7h sáng tự động'],
-    [false, '#f7fafc', null,      10, '🗺️', 'Gợi Ý Lịch Trình → AI phân tích & đề xuất lịch từng ngày'],
-    [false, null,      null,      10, '',   ''],
-
-    [true,  '#4a5568', '#ffffff', 11, '🤖', 'TELEGRAM BOT — CÁCH GHI CHI TIÊU'],
-    [false, '#fffbeb', '#744210', 10, '1.', 'Nhắn số tiền + mô tả:'],
-    [false, null,      '#2b6cb0', 10, '',   '  500k ăn tối hải sản'],
-    [false, null,      '#2b6cb0', 10, '',   '  1.5tr tiền phòng'],
-    [false, null,      '#2b6cb0', 10, '',   '  300k xăng dầu'],
-    [false, '#fffbeb', '#744210', 10, '2.', 'Ghi kèm ngày (nếu không phải hôm nay):'],
-    [false, null,      '#2b6cb0', 10, '',   '  24/5 - 800k ăn hải sản'],
-    [false, '#fffbeb', '#744210', 10, '3.', 'Gửi ảnh hoá đơn → bot tự đọc số tiền (cần Gemini API key)'],
-    [false, null,      null,      10, '',   ''],
-
-    [true,  '#4a5568', '#ffffff', 11, '📟', 'LỆNH BOT'],
-    [false, '#f7fafc', null,      10, '/start',   'Xem hướng dẫn & danh sách lệnh'],
-    [false, null,      null,      10, '/xem',     'Xem 5 khoản chi tiêu gần nhất'],
-    [false, '#f7fafc', null,      10, '/tong',    'Xem tổng chi từng nhóm toàn chuyến'],
-    [false, null,      null,      10, '/baocao',  'Xem tổng hợp chi tiêu hôm nay'],
-    [false, '#f7fafc', null,      10, '/id',      'Xem Telegram User ID của bạn (để đăng ký vào Bot Config)'],
-    [false, null,      null,      10, '',         ''],
-
-    [true,  '#4a5568', '#ffffff', 11, '⚙️', 'CÀI ĐẶT LẦN ĐẦU (admin làm 1 lần)'],
-    [false, '#f7fafc', null,      10, '1.', 'Tạo bot trên @BotFather → lấy token'],
-    [false, null,      null,      10, '2.', 'Menu → 📱 Tạo sheet Bot Config → paste token vào ô B4'],
-    [false, '#f7fafc', null,      10, '3.', 'Mỗi thành viên nhắn /id vào bot → copy ID vào cột B sheet Bot Config'],
-    [false, null,      null,      10, '4.', 'Menu → Triển khai ứng dụng Web → Sao chép URL'],
-    [false, '#f7fafc', null,      10, '5.', 'Menu → 🔗 Cài đặt Webhook Telegram'],
-    [false, null,      null,      10, '6.', 'Menu → ⏰ Bật tự động 7h sáng (thời tiết & gợi ý)'],
-    [false, '#f7fafc', null,      10, '7.', 'Menu → 🔔 Bật nhắc nhở 20h tối (tổng kết ngày)'],
-    [false, null,      null,      10, '',   ''],
-
-    [true,  '#4a5568', '#ffffff', 11, '📷', 'ĐỌC ẢNH HOÁ ĐƠN (Gemini Vision)'],
-    [false, '#f7fafc', null,      10, '1.', 'Vào aistudio.google.com → lấy API key miễn phí'],
-    [false, null,      null,      10, '2.', 'Mở Code.js → dòng geminiApiKey → paste key vào'],
-    [false, '#f7fafc', null,      10, '3.', 'Deploy lại → gửi ảnh hoá đơn vào bot là xong'],
-    [false, null,      null,      10, '',   ''],
-
-    [true,  '#4a5568', '#ffffff', 11, '💡', 'LƯU Ý QUAN TRỌNG'],
-    [false, '#fff5f5', '#c53030', 10, '⚠️', 'KHÔNG xoá cột A trong sheet Chi Tiêu (công thức tự động)'],
-    [false, null,      null,      10, '✅', 'Data chi tiêu & Góp tiền được BẢO TOÀN khi chạy lại Khởi tạo'],
-    [false, '#fff5f5', '#c53030', 10, '⚠️', 'Sau mỗi lần deploy code mới → phải cài lại Webhook Telegram'],
-    [false, null,      null,      10, '✅', 'Nhắc nhở 20h sẽ gửi đến tất cả User ID đã đăng ký trong Bot Config'],
-  ];
-
-  rows.forEach((row, i) => {
-    const [bold, bg, fg, fs, colA, colB] = row;
-    const r = i + 1;
-    const cellA = s.getRange(r, 1);
-    const cellB = s.getRange(r, 2);
-    cellA.setValue(colA).setFontWeight(bold ? 'bold' : 'normal').setFontSize(fs || 10);
-    cellB.setValue(colB).setFontWeight(bold ? 'bold' : 'normal').setFontSize(fs || 10).setWrap(true);
-    if (bg)  { s.getRange(r, 1, 1, 2).setBackground(bg); }
-    if (fg)  { s.getRange(r, 1, 1, 2).setFontColor(fg); }
-  });
-
-  s.setFrozenRows(1);
+  SpreadsheetApp.getUi().alert(
+    '📖 HƯỚNG DẪN SỬ DỤNG — PHÚ YÊN 2026\n' +
+    '══════════════════════════════\n\n' +
+    '🤖 TELEGRAM BOT\n' +
+    '• Nhắn: 500k ăn tối  |  1.5tr tiền phòng  |  24/5 - 300k xăng\n' +
+    '• Gửi ảnh hoá đơn → bot tự đọc số tiền\n' +
+    '• /xem  /tong  /baocao  /id\n\n' +
+    '📋 CÁC SHEET\n' +
+    '• ⚙️ Bot Config → token + danh sách thành viên\n' +
+    '• 💵 Góp Tiền Trước → khoản đã góp ban đầu\n' +
+    '• 📋 Chi Tiêu → nhập tay hoặc qua bot\n' +
+    '• 📊 Tổng Hợp → quyết toán tự động\n' +
+    '• 🌤️ Thời Tiết → cập nhật 7h sáng\n\n' +
+    '⚙️ CÀI ĐẶT (admin, 1 lần)\n' +
+    '1. BotFather → lấy token → paste vào Bot Config B4\n' +
+    '2. Thành viên nhắn /id → copy vào cột B Bot Config\n' +
+    '3. Triển khai Web App → copy URL\n' +
+    '4. Menu → 🔗 Cài đặt Webhook\n' +
+    '5. Menu → ⏰ Bật 7h sáng  +  🔔 Bật nhắc 20h tối\n\n' +
+    '⚠️ Sau mỗi lần deploy mới → cài lại Webhook!'
+  );
 }
 
 // ════════════════════════════════════════════════════════
