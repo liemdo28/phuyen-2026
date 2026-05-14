@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from app.core.config import settings
 from app.ai.context_resolver import build_context_snapshot
 from app.ai.entity_resolver import resolve_entity_reference
 from app.ai.workflow_reasoner import build_workflow_reasoning
@@ -75,6 +76,13 @@ class TelegramOrchestrator:
                 await self.telegram.send_message(chat.id, "Mình đã nhận nội dung này, nhưng hiện chỉ mới xử lý tốt text/voice/ảnh theo pipeline AI mới.")
             return
 
+        command_reply = self._command_reply(message, incoming_text)
+        if command_reply is not None:
+            await self.action_logger.log("command_response", chat.id, user.id, {"text": incoming_text, "reply": command_reply})
+            if decision.allow_reply:
+                await self.telegram.send_message(chat.id, command_reply)
+            return
+
         await self.action_logger.log("incoming_message", chat.id, user.id, {"text": incoming_text, "update_id": update.update_id})
         await self.memory.append_user_turn(context, incoming_text)
         memory_summary = self.memory.summarize(context)
@@ -121,3 +129,32 @@ class TelegramOrchestrator:
         if message.group_chat_created or message.supergroup_chat_created or message.channel_chat_created:
             return True
         return False
+
+    def _command_reply(self, message, incoming_text: str) -> str | None:
+        text = (incoming_text or "").strip().lower()
+        if text in {"/start", "/help"}:
+            first_name = message.from_user.first_name or "bạn"
+            build_label = settings.app_env
+            return (
+                f"👋 Xin chào {first_name}!\n\n"
+                "💰 Ghi chi tiêu:\n"
+                "• 500k ăn tối | 1.5tr tiền phòng | 24/5 - 300k xăng\n"
+                "• 📸 Gửi ảnh hoá đơn → bot tự đọc\n\n"
+                "🍜 Tìm quán ăn (gửi 📍 vị trí trước):\n"
+                "• quán gần tôi nhất\n"
+                "• trên đường về, quán nào ngon\n\n"
+                "📦 Đồ cần đem:\n"
+                "• danh sách cần đem | còn gì chưa đem\n"
+                "• đã đem ô, thuốc, kem chống nắng\n\n"
+                "/xem  /tong  /baocao  /id\n\n"
+                f"build railway-{build_label}"
+            )
+        if text == "/id":
+            username = f"@{message.from_user.username}" if message.from_user.username else "@(chưa có)"
+            return (
+                "🪪 Thông tin:\n\n"
+                f"Username: {username}\n"
+                f"User ID: {message.from_user.id}\n\n"
+                'Copy ID -> paste vào cột B sheet "⚙️ Bot Config"'
+            )
+        return None
