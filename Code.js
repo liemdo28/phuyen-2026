@@ -53,6 +53,9 @@ function onOpen() {
     .addItem('📱 Tạo sheet Bot Config',          'setupBotConfigSheet')
     .addItem('🔗 Cài đặt Webhook Telegram',      'setupTelegramWebhook')
     .addSeparator()
+    .addItem('🔔 Bật nhắc nhở 20h tối',         'setupEveningReminderTrigger')
+    .addItem('🔕 Tắt nhắc nhở',                 'deleteEveningReminderTrigger')
+    .addSeparator()
     .addItem('🗑️ Xoá dữ liệu chi tiêu',         'clearData')
     .addToUi();
 }
@@ -631,7 +634,8 @@ function handleMessage(msg) {
     sendTG(cfg.token, chatId,
       `👋 Xin chào ${firstName}!\n\nNhắn để ghi chi tiêu:\n` +
       `• <b>500k ăn tối</b>\n• <b>1.5tr tiền phòng</b>\n• <b>300k xăng dầu</b>\n• <b>24/5 - 800k ăn hải sản</b>\n\n` +
-      `/xem — 5 khoản gần nhất\n/tong — tổng chi từng nhóm\n/id — xem Telegram ID của bạn`
+      `📸 Gửi <b>ảnh hoá đơn</b> → bot tự đọc số tiền\n\n` +
+      `/xem — 5 khoản gần nhất\n/tong — tổng chi từng nhóm\n/baocao — chi tiêu hôm nay\n/id — xem Telegram ID của bạn`
     );
     return;
   }
@@ -641,8 +645,12 @@ function handleMessage(msg) {
     );
     return;
   }
-  if (text === '/xem')  { sendRecentExpenses(cfg, chatId); return; }
-  if (text === '/tong') { sendSummary(cfg, chatId); return; }
+  if (text === '/xem')    { sendRecentExpenses(cfg, chatId); return; }
+  if (text === '/tong')   { sendSummary(cfg, chatId); return; }
+  if (text === '/baocao') { sendDailyReport(cfg, chatId); return; }
+
+  // Ảnh hoá đơn
+  if (msg.photo) { handlePhoto(msg, cfg); return; }
 
   const userInfo =
     (userId   && cfg.byUserId[userId])   ||
@@ -666,6 +674,197 @@ function handleMessage(msg) {
   sendTG(cfg.token, chatId,
     `✅ Đã ghi!\n\n📅 ${expense.dateStr}\n📝 ${expense.name}\n📂 ${expense.category}\n💰 ${fmtMoney(expense.amount)}\n👥 ${expense.group} (${userInfo.name})`
   );
+}
+
+// ════════════════════════════════════════════════════════
+//  📸 ĐỌC HOÁ ĐƠN QUA GEMINI VISION
+// ════════════════════════════════════════════════════════
+function handlePhoto(msg, cfg) {
+  const chatId = msg.chat.id;
+  const from   = msg.from;
+  const userId   = String(from.id || '');
+  const username = (from.username || '').toLowerCase().trim();
+  const firstName= from.first_name || '';
+
+  if (!CFG.geminiApiKey) {
+    sendTG(cfg.token, chatId,
+      '❌ Chưa có Gemini API key.\n\nThêm key vào <code>CFG.geminiApiKey</code> trong Code.js (miễn phí tại aistudio.google.com)'
+    );
+    return;
+  }
+
+  sendTG(cfg.token, chatId, '🔍 Đang đọc hoá đơn...');
+
+  try {
+    // Lấy ảnh độ phân giải cao nhất
+    const photo   = msg.photo[msg.photo.length - 1];
+    const fileRes = UrlFetchApp.fetch(
+      `https://api.telegram.org/bot${cfg.token}/getFile?file_id=${photo.file_id}`,
+      { muteHttpExceptions: true }
+    );
+    const fileJson = JSON.parse(fileRes.getContentText());
+    if (!fileJson.ok) { sendTG(cfg.token, chatId, '❌ Không tải được ảnh.'); return; }
+
+    const imageBytes = UrlFetchApp.fetch(
+      `https://api.telegram.org/file/bot${cfg.token}/${fileJson.result.file_path}`,
+      { muteHttpExceptions: true }
+    ).getContent();
+    const base64Image = Utilities.base64Encode(imageBytes);
+
+    const prompt =
+      'Đây là ảnh hoá đơn/receipt. Đọc và trả lời ĐÚNG format sau (không thêm gì khác):\n' +
+      'TÊN: [tên món/dịch vụ ngắn gọn tiếng Việt]\n' +
+      'SỐ TIỀN: [chỉ số nguyên, không dấu phẩy không ký hiệu]\n' +
+      'DANH MỤC: [một trong: ăn uống, lưu trú, di chuyển, xăng dầu, vui chơi, mua sắm, y tế, khác]\n' +
+      'Nếu không đọc được số tiền, chỉ viết: KHÔNG RÕ';
+
+    const gemRes  = UrlFetchApp.fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${CFG.geminiApiKey}`,
+      {
+        method: 'post', contentType: 'application/json',
+        payload: JSON.stringify({ contents: [{ parts: [
+          { text: prompt },
+          { inline_data: { mime_type: 'image/jpeg', data: base64Image } }
+        ]}]}),
+        muteHttpExceptions: true,
+      }
+    );
+    const result = JSON.parse(gemRes.getContentText()).candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+    if (!result || result.includes('KHÔNG RÕ')) {
+      sendTG(cfg.token, chatId, '❓ Không đọc được số tiền từ ảnh.\nThử nhắn thủ công: <b>500k ăn tối</b>');
+      return;
+    }
+
+    const nameMatch   = result.match(/TÊN:\s*(.+)/i);
+    const amountMatch = result.match(/SỐ TIỀN:\s*([\d]+)/i);
+    const catMatch    = result.match(/DANH MỤC:\s*(.+)/i);
+
+    if (!amountMatch) {
+      sendTG(cfg.token, chatId, `🤖 Gemini đọc được:\n<pre>${result}</pre>\n\n❓ Không parse được số tiền. Nhắn thủ công nhé.`);
+      return;
+    }
+
+    const userInfo =
+      (userId   && cfg.byUserId[userId])   ||
+      (username && cfg.byUsername[username]) ||
+      (firstName&& cfg.byUsername[firstName.toLowerCase()]) ||
+      { group: cfg.defaultGrp, name: firstName || 'Unknown' };
+
+    const amount  = parseInt(amountMatch[1]);
+    const name    = nameMatch ? nameMatch[1].trim() : 'Chi tiêu từ hoá đơn';
+    const catRaw  = catMatch  ? catMatch[1].trim().toLowerCase() : 'khác';
+    const CAT_MAP = {
+      'ăn uống':'🍜 Ăn uống','lưu trú':'🏨 Lưu trú','di chuyển':'🚗 Di chuyển',
+      'xăng dầu':'⛽ Xăng dầu','vui chơi':'🎡 Vui chơi','mua sắm':'🛒 Mua sắm',
+      'y tế':'💊 Y tế','khác':'📦 Khác',
+    };
+    const category = CAT_MAP[catRaw] || detectCategory(name);
+    const dateStr  = Utilities.formatDate(new Date(), 'Asia/Ho_Chi_Minh', 'dd/MM/yyyy');
+
+    writeExpense({ dateStr, name, amount, category, group: userInfo.group });
+    sendTG(cfg.token, chatId,
+      `✅ Đọc hoá đơn xong!\n\n📅 ${dateStr}\n📝 ${name}\n📂 ${category}\n💰 ${fmtMoney(amount)}\n👥 ${userInfo.group} (${userInfo.name})`
+    );
+  } catch(e) {
+    Logger.log(e);
+    sendTG(cfg.token, chatId, '❌ Lỗi khi đọc ảnh. Thử nhắn thủ công.');
+  }
+}
+
+// ════════════════════════════════════════════════════════
+//  📊 BÁO CÁO HÔM NAY
+// ════════════════════════════════════════════════════════
+function sendDailyReport(cfg, chatId) {
+  const s = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Chi Tiêu');
+  if (!s || s.getLastRow() < 2) { sendTG(cfg.token, chatId, 'Chưa có dữ liệu chi tiêu.'); return; }
+
+  const today    = Utilities.formatDate(new Date(), 'Asia/Ho_Chi_Minh', 'yyyyMMdd');
+  const todayStr = Utilities.formatDate(new Date(), 'Asia/Ho_Chi_Minh', 'dd/MM/yyyy');
+  const data     = s.getRange(2, 2, s.getLastRow() - 1, 5).getValues()
+    .filter(r => r[0] instanceof Date && r[1]);
+  const todayData = data.filter(r =>
+    Utilities.formatDate(r[0], 'Asia/Ho_Chi_Minh', 'yyyyMMdd') === today
+  );
+
+  if (!todayData.length) {
+    sendTG(cfg.token, chatId, `📊 Hôm nay ${todayStr} chưa có khoản chi nào.`);
+    return;
+  }
+
+  const lines   = todayData.map(r => `• ${r[1]} — <b>${fmtMoney(r[3])}</b> <i>(${r[4]})</i>`);
+  const total   = todayData.reduce((acc, r) => acc + r[3], 0);
+  const byGroup = {};
+  todayData.forEach(r => { byGroup[r[4]] = (byGroup[r[4]] || 0) + r[3]; });
+
+  let msg = `📊 <b>Chi tiêu hôm nay ${todayStr}:</b>\n\n${lines.join('\n')}\n\n`;
+  msg += Object.entries(byGroup).map(([g, v]) => `${g}: ${fmtMoney(v)}`).join('\n');
+  msg += `\n────────────\nTổng: <b>${fmtMoney(total)}</b>`;
+  sendTG(cfg.token, chatId, msg);
+}
+
+// ════════════════════════════════════════════════════════
+//  🔔 NHẮC NHỞ & TỔNG KẾT TỰ ĐỘNG 20H TỐI
+// ════════════════════════════════════════════════════════
+function setupEveningReminderTrigger() {
+  ScriptApp.getProjectTriggers().forEach(t => {
+    if (t.getHandlerFunction() === 'sendEveningReminder') ScriptApp.deleteTrigger(t);
+  });
+  ScriptApp.newTrigger('sendEveningReminder').timeBased().atHour(20).everyDays(1).create();
+  SpreadsheetApp.getUi().alert(
+    '✅ Đã bật nhắc nhở 20h tối!\n\nMỗi tối 20h bot sẽ tự gửi tổng kết + nhắc ghi chi tiêu cho tất cả thành viên.'
+  );
+}
+
+function deleteEveningReminderTrigger() {
+  let n = 0;
+  ScriptApp.getProjectTriggers().forEach(t => {
+    if (t.getHandlerFunction() === 'sendEveningReminder') { ScriptApp.deleteTrigger(t); n++; }
+  });
+  SpreadsheetApp.getUi().alert(n > 0 ? '✅ Đã tắt nhắc nhở.' : 'Không có trigger nào đang chạy.');
+}
+
+function sendEveningReminder() {
+  let cfg;
+  try { cfg = loadConfig(); } catch(e) { Logger.log(e); return; }
+
+  const todayStr = Utilities.formatDate(new Date(), 'Asia/Ho_Chi_Minh', 'dd/MM/yyyy');
+  const { count, total } = getTodayStats();
+
+  const summaryLine = count > 0
+    ? `Hôm nay đã ghi <b>${count} khoản</b> — tổng <b>${fmtMoney(total)}</b>.`
+    : 'Hôm nay chưa ghi khoản nào.';
+
+  const msg =
+    `🌙 Tổng kết ${todayStr}\n\n` +
+    `${summaryLine}\n\n` +
+    `Còn khoản nào chưa ghi? Nhắn ngay:\n` +
+    `• <b>200k ăn tối</b>\n• <b>gửi ảnh hoá đơn</b>\n\n` +
+    `/baocao — xem chi tiết hôm nay`;
+
+  getAllUserIds(cfg).forEach(uid => {
+    try { sendTG(cfg.token, uid, msg); } catch(e) { Logger.log(e); }
+  });
+}
+
+function getTodayStats() {
+  const s = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Chi Tiêu');
+  if (!s || s.getLastRow() < 2) return { count: 0, total: 0 };
+  const today = Utilities.formatDate(new Date(), 'Asia/Ho_Chi_Minh', 'yyyyMMdd');
+  const data  = s.getRange(2, 2, s.getLastRow() - 1, 4).getValues()
+    .filter(r => r[0] instanceof Date && r[2]);
+  let count = 0, total = 0;
+  data.forEach(r => {
+    if (Utilities.formatDate(r[0], 'Asia/Ho_Chi_Minh', 'yyyyMMdd') === today) {
+      count++; total += r[3];
+    }
+  });
+  return { count, total };
+}
+
+function getAllUserIds(cfg) {
+  // Với Telegram DM: user_id === chat_id
+  return [...new Set(Object.keys(cfg.byUserId))].filter(Boolean);
 }
 
 function parseTGExpense(text, group) {
