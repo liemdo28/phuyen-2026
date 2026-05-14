@@ -762,6 +762,9 @@ function setupBotConfigSheet() {
   s.getRange('B4:E4').merge().setValue('PASTE_TOKEN_VÀO_ĐÂY').setBackground('#fffbeb').setFontColor('#c05621');
   s.getRange('A5').setValue('Tên bot').setFontWeight('bold');
   s.getRange('B5:E5').merge().setValue('PhuYen2026Bot').setFontColor('#718096');
+  s.getRange('A6').setValue('Web App URL').setFontWeight('bold');
+  s.getRange('B6:E6').merge().setValue('PASTE_WEB_APP_URL_VÀO_ĐÂY').setBackground('#ebf8ff').setFontColor('#2b6cb0')
+    .setNote('Apps Script → Deploy → Manage deployments → copy URL (dạng .../exec)');
 
   s.getRange('A7:E7').merge().setBackground('#2d3748').setFontColor('#fff').setFontWeight('bold').setValue('⚙️ CÀI ĐẶT CHUNG');
   s.getRange('A8').setValue('Nhóm mặc định').setFontWeight('bold');
@@ -1479,15 +1482,30 @@ function fmtMoney(n) {
 
 function setupTelegramWebhook() {
   const cfg = loadConfig();
-  const url = ScriptApp.getService().getUrl();
-  const res = UrlFetchApp.fetch(
+
+  // Đọc Web App URL từ sheet (B6) — đáng tin hơn ScriptApp.getService().getUrl()
+  const s   = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('⚙️ Bot Config');
+  const url = s ? String(s.getRange('B6').getValue()).trim() : '';
+
+  if (!url || !url.startsWith('https://script.google.com')) {
+    SpreadsheetApp.getUi().alert(
+      '⚠️ Chưa có Web App URL!\n\n' +
+      '1. Apps Script → Deploy → Manage deployments\n' +
+      '2. Copy URL (dạng .../exec)\n' +
+      '3. Paste vào ô B6 sheet "⚙️ Bot Config"\n' +
+      '4. Chạy lại menu này'
+    );
+    return;
+  }
+
+  const res  = UrlFetchApp.fetch(
     `https://api.telegram.org/bot${cfg.token}/setWebhook?url=${encodeURIComponent(url)}`,
     { muteHttpExceptions:true }
   );
   const json = JSON.parse(res.getContentText());
   SpreadsheetApp.getUi().alert(
     json.ok
-      ? '✅ Webhook kết nối thành công!\n\nMở Telegram nhắn /start để test.'
-      : '❌ Lỗi: ' + json.description
+      ? `✅ Webhook kết nối thành công!\n\nURL: ${url}\n\nMở Telegram nhắn /start để test.`
+      : '❌ Lỗi: ' + json.description + '\n\nKiểm tra lại token và URL.'
   );
 }
