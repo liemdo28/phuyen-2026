@@ -44,9 +44,15 @@ class TelegramMessage(BaseModel):
     photo: list[TelegramPhoto] | None = None
     voice: TelegramVoice | None = None
     location: TelegramLocation | None = None
+    via_bot: TelegramUser | None = None
+    new_chat_members: list[TelegramUser] | None = None
+    left_chat_member: TelegramUser | None = None
+    group_chat_created: bool | None = None
+    supergroup_chat_created: bool | None = None
+    channel_chat_created: bool | None = None
 
 
 class TelegramUpdate(BaseModel):
     update_id: int
     message: TelegramMessage | None = None
-
+    edited_message: TelegramMessage | None = None

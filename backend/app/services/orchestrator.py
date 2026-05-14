@@ -6,6 +6,7 @@ from app.adapters.media import MediaAdapter
 from app.adapters.telegram import TelegramAdapter
 from app.schemas.telegram import TelegramUpdate
 from app.services.action_logger import ActionLogger
+from app.services.loop_guard import LoopGuard
 from app.services.memory import MemoryService
 from app.services.workflow_engine import WorkflowEngine
 
@@ -18,23 +19,57 @@ class TelegramOrchestrator:
         self.telegram = TelegramAdapter()
         self.workflow = WorkflowEngine(GoogleSheetsAdapter())
         self.action_logger = ActionLogger()
-        self._last_update_id: int | None = None
+        self.loop_guard = LoopGuard()
 
     async def handle_update(self, update: TelegramUpdate) -> None:
-        if self._is_duplicate(update.update_id):
-            return
-
         message = update.message
         if message is None:
             return
 
         user = message.from_user
-        chat = message.chat
-        context = await self.memory.get_context(chat_id=chat.id, user_id=user.id)
+        if self._should_ignore_message(message):
+            await self.action_logger.log(
+                "ignored_message",
+                message.chat.id,
+                user.id if user else 0,
+                {
+                    "update_id": update.update_id,
+                    "message_id": message.message_id,
+                    "is_bot": getattr(user, "is_bot", False),
+                    "text": message.text or message.caption or "",
+                },
+            )
+            return
 
+        chat = message.chat
         incoming_text = await self._extract_message_text(message)
+        decision = self.loop_guard.evaluate(
+            update_id=update.update_id,
+            message_id=message.message_id,
+            chat_id=chat.id,
+            user_id=user.id,
+            text=incoming_text,
+        )
+        await self.action_logger.log(
+            "update_received",
+            chat.id,
+            user.id,
+            {
+                "update_id": update.update_id,
+                "message_id": message.message_id,
+                "text": incoming_text,
+                "from_user_id": user.id,
+                "from_user_is_bot": user.is_bot,
+                "decision": decision.reason,
+            },
+        )
+        if not decision.allow_processing:
+            return
+
+        context = await self.memory.get_context(chat_id=chat.id, user_id=user.id)
         if not incoming_text:
-            await self.telegram.send_message(chat.id, "Mình đã nhận nội dung này, nhưng hiện chỉ mới xử lý tốt text/voice/ảnh theo pipeline AI mới.")
+            if decision.allow_reply:
+                await self.telegram.send_message(chat.id, "Mình đã nhận nội dung này, nhưng hiện chỉ mới xử lý tốt text/voice/ảnh theo pipeline AI mới.")
             return
 
         await self.action_logger.log("incoming_message", chat.id, user.id, {"text": incoming_text, "update_id": update.update_id})
@@ -52,7 +87,8 @@ class TelegramOrchestrator:
 
         await self.memory.append_assistant_turn(context, response.text)
         await self.action_logger.log("assistant_response", chat.id, user.id, {"text": response.text})
-        await self.telegram.send_message(chat.id, response.text)
+        if decision.allow_reply:
+            await self.telegram.send_message(chat.id, response.text)
 
     async def _extract_message_text(self, message) -> str:
         if message.text:
@@ -68,8 +104,14 @@ class TelegramOrchestrator:
             return f"User shared location {message.location.latitude},{message.location.longitude}"
         return ""
 
-    def _is_duplicate(self, update_id: int) -> bool:
-        if self._last_update_id is not None and update_id <= self._last_update_id:
+    def _should_ignore_message(self, message) -> bool:
+        user = message.from_user
+        if user is None or user.is_bot:
             return True
-        self._last_update_id = update_id
+        if message.via_bot is not None:
+            return True
+        if message.new_chat_members or message.left_chat_member:
+            return True
+        if message.group_chat_created or message.supergroup_chat_created or message.channel_chat_created:
+            return True
         return False

@@ -25,6 +25,7 @@ CREATE_MARKERS = ["thêm", "tạo", "add", "create", "lưu"]
 UPDATE_MARKERS = ["update", "cập nhật", "sửa", "đổi", "dời", "chỉnh"]
 DELETE_MARKERS = ["xóa", "xoá", "remove", "delete"]
 QUERY_MARKERS = ["bao nhiêu", "có", "tìm", "sao", "nào", "không", "hôm nay", "hôm qua"]
+REFERENCE_PATTERNS = ["cái trên", "cái hôm qua", "task kia", "task này", "bill này", "khoản đó"]
 
 
 def heuristic_intent_parse(message_text: str, memory_summary: str = "") -> AssistantIntent:
@@ -38,7 +39,7 @@ def heuristic_intent_parse(message_text: str, memory_summary: str = "") -> Assis
         confidence += 0.15
     if domain != "general":
         confidence += 0.1
-    if memory_summary and any(phrase in normalized for phrase in ["cái trên", "task này", "bill này"]):
+    if memory_summary and any(phrase in normalized for phrase in REFERENCE_PATTERNS):
         confidence += 0.1
 
     return AssistantIntent(
@@ -94,6 +95,22 @@ def extract_common_fields(text: str) -> dict[str, object]:
     if category:
         fields["category"] = category
 
+    reference = extract_reference(text)
+    if reference:
+        fields["entity_reference"] = reference
+
+    deadline = extract_deadline_reference(text)
+    if deadline:
+        fields["deadline"] = deadline
+
+    if "task" in text and "entity_name" not in fields:
+        entity_name = extract_named_entity_after_keyword(text, "task")
+        if entity_name:
+            fields["entity_name"] = entity_name
+
+    if "inventory" in text or "tồn kho" in text:
+        fields["sheet_hint"] = "inventory"
+
     return fields
 
 
@@ -130,6 +147,8 @@ def extract_relative_date(text: str) -> str | None:
         "hôm qua": now - timedelta(days=1),
         "mai": now + timedelta(days=1),
         "ngày mai": now + timedelta(days=1),
+        "mốt": now + timedelta(days=2),
+        "ngày mốt": now + timedelta(days=2),
     }
     for phrase, dt in mapping.items():
         if phrase in text:
@@ -164,6 +183,27 @@ def infer_expense_category(text: str) -> str | None:
     if any(word in text for word in ["xăng", "grab", "taxi", "vé"]):
         return "transport"
     return None
+
+
+def extract_reference(text: str) -> str | None:
+    for pattern in REFERENCE_PATTERNS:
+        if pattern in text:
+            return pattern
+    return None
+
+
+def extract_deadline_reference(text: str) -> str | None:
+    if not any(marker in text for marker in ["deadline", "dời", "sang", "đổi"]):
+        return ""
+    return extract_relative_date(text) or ""
+
+
+def extract_named_entity_after_keyword(text: str, keyword: str) -> str | None:
+    match = re.search(rf"{keyword}\s+([a-zA-Z0-9_\-\s]+?)(?:\s+(?:sang|thứ|hôm|mai|mốt|deadline|overdue|chưa|đã)|$)", text)
+    if not match:
+        return None
+    candidate = match.group(1).strip(" -,:")
+    return candidate or None
 
 
 def missing_fields_for_intent(intent_type: str, domain: str, extracted_fields: dict[str, object]) -> list[str]:

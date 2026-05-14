@@ -19,3 +19,13 @@ def test_intent_detection_expense_create() -> None:
     assert intent.domain == "expense"
     assert intent.extracted_fields["amount"] == 2_600_000
 
+
+def test_relative_date_mot() -> None:
+    assert extract_relative_date("dời deadline sang mốt") is not None
+
+
+def test_reference_and_task_name_extraction() -> None:
+    intent = heuristic_intent_parse("update task kitchen sang thứ 6")
+    assert intent.intent_type == "update"
+    assert intent.domain == "task"
+    assert intent.extracted_fields["entity_name"] == "kitchen"

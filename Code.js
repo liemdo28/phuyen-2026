@@ -57,6 +57,7 @@ function onOpen() {
     .addItem('⏹️ Tắt tự động',                  'deleteDailyTrigger')
     .addSeparator()
     .addItem('📱 Tạo sheet Bot Config',          'setupBotConfigSheet')
+    .addItem('🔎 Kiểm tra Webhook Telegram',     'checkTelegramWebhookInfo')
     .addItem('🔗 Cài đặt Webhook Telegram',      'setupTelegramWebhook')
     .addItem('🧹 Xoá pending updates Telegram',  'clearTelegramPendingUpdates')
     .addSeparator()
@@ -847,12 +848,34 @@ function getBotToken(forceRefresh) {
 function doPost(e) {
   try {
     const update = JSON.parse(e.postData.contents);
-    if (isDuplicateTelegramUpdate(update)) {
+    logTelegramEvent_('incoming_update', update);
+    if (!update || !update.message) {
       return ContentService.createTextOutput('OK');
     }
-    if (update.message) handleMessage(update.message);
+    if (isIgnorableTelegramMessage_(update.message)) {
+      logTelegramEvent_('ignored_message', update);
+      return ContentService.createTextOutput('OK');
+    }
+    if (isDuplicateTelegramUpdate(update)) {
+      logTelegramEvent_('duplicate_update', update);
+      return ContentService.createTextOutput('OK');
+    }
+    if (isRateLimitedTelegramMessage_(update.message)) {
+      logTelegramEvent_('rate_limited', update);
+      return ContentService.createTextOutput('OK');
+    }
+    handleMessage(update.message);
   } catch(err) { Logger.log(err); }
   return ContentService.createTextOutput('OK');
+}
+
+function isIgnorableTelegramMessage_(msg) {
+  if (!msg || !msg.from) return true;
+  if (msg.from.is_bot === true) return true;
+  if (msg.via_bot) return true;
+  if (msg.new_chat_members || msg.left_chat_member) return true;
+  if (msg.group_chat_created || msg.supergroup_chat_created || msg.channel_chat_created) return true;
+  return false;
 }
 
 function isDuplicateTelegramUpdate(update) {
@@ -864,7 +887,7 @@ function isDuplicateTelegramUpdate(update) {
         String(msg.chat && msg.chat.id || ''),
         String(msg.message_id || ''),
         String(msg.date || ''),
-        String(msg.text || msg.caption || msg.location ? 'payload' : ''),
+        String((msg.text || msg.caption || '').trim().toLowerCase()),
       ].join(':')
     : '';
   if (!Number.isFinite(updateId) && !fingerprint) return false;
@@ -886,6 +909,21 @@ function isDuplicateTelegramUpdate(update) {
   } finally {
     lock.releaseLock();
   }
+}
+
+function isRateLimitedTelegramMessage_(msg) {
+  const userId = String(msg && msg.from && msg.from.id || '');
+  const chatId = String(msg && msg.chat && msg.chat.id || '');
+  const text   = String(msg && (msg.text || msg.caption) || '').trim().toLowerCase();
+  if (!userId || !chatId) return false;
+
+  const key = ['tg_rl', chatId, userId, text || '__nontext__'].join(':');
+  const cache = CacheService.getScriptCache();
+  const current = Number(cache.get(key) || '0');
+  const limit = text === '/start' ? 1 : 3;
+  if (current >= limit) return true;
+  cache.put(key, String(current + 1), 10);
+  return false;
 }
 
 function handleMessage(msg) {
@@ -1545,6 +1583,24 @@ function sendTG(token, chatId, text) {
   });
 }
 
+function logTelegramEvent_(label, update) {
+  try {
+    const msg = update && update.message;
+    const from = msg && msg.from;
+    Logger.log(JSON.stringify({
+      label,
+      update_id: update && update.update_id || null,
+      message_id: msg && msg.message_id || null,
+      text: msg && (msg.text || msg.caption) || '',
+      from_user_id: from && from.id || null,
+      from_user_is_bot: from && from.is_bot === true,
+      chat_id: msg && msg.chat && msg.chat.id || null,
+    }));
+  } catch (e) {
+    Logger.log(e);
+  }
+}
+
 function fmtMoney(n) {
   return n >= 1000000
     ? (n/1000000).toFixed(n%1000000===0?0:1) + ' triệu đ'
@@ -1588,6 +1644,30 @@ function setupTelegramWebhook() {
     json.ok
       ? `✅ Webhook kết nối thành công!\n\nURL: ${url}\n\nĐã xoá pending updates cũ.\nMở Telegram nhắn /start để test.`
       : '❌ Lỗi: ' + json.description + '\n\nKiểm tra lại token và URL.'
+  );
+}
+
+function checkTelegramWebhookInfo() {
+  const cfg = loadConfig();
+  const res = UrlFetchApp.fetch(
+    `https://api.telegram.org/bot${cfg.token}/getWebhookInfo`,
+    { muteHttpExceptions:true }
+  );
+  const json = JSON.parse(res.getContentText());
+  if (!json.ok) {
+    SpreadsheetApp.getUi().alert('❌ Không lấy được webhook info: ' + json.description);
+    return;
+  }
+
+  const info = json.result || {};
+  SpreadsheetApp.getUi().alert(
+    '🔎 TELEGRAM WEBHOOK INFO\n\n' +
+    'URL: ' + (info.url || '(trống)') + '\n' +
+    'Pending updates: ' + (info.pending_update_count || 0) + '\n' +
+    'Last error date: ' + (info.last_error_date || '(không có)') + '\n' +
+    'Last error message: ' + (info.last_error_message || '(không có)') + '\n' +
+    'Max connections: ' + (info.max_connections || '(mặc định)') + '\n' +
+    'Has custom cert: ' + (info.has_custom_certificate === true ? 'Có' : 'Không')
   );
 }
 

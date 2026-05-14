@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 
@@ -9,7 +9,7 @@ from typing import Any
 class MemoryTurn:
     role: str
     text: str
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 @dataclass
@@ -17,7 +17,7 @@ class EntityReference:
     entity_type: str
     entity_id: str
     payload: dict[str, Any]
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 @dataclass
@@ -29,4 +29,3 @@ class UserContext:
     conversation: list[MemoryTurn] = field(default_factory=list)
     entities: list[EntityReference] = field(default_factory=list)
     preferences: dict[str, Any] = field(default_factory=dict)
-
