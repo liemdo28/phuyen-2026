@@ -25,6 +25,19 @@ This project can run on Render as a Docker-based FastAPI webhook service for Tel
    - Branch: `main`
    - Instance Type: your lowest-cost or free-eligible option
 
+## Blueprint Option
+
+This repo now includes:
+
+- [render.yaml](/Users/liemdo/phuyen-2026/render.yaml:1)
+
+If you want less manual setup, create the service from the repo's Blueprint instead of filling everything by hand. Render will read:
+
+- service name
+- docker runtime
+- health check path
+- default non-secret env vars
+
 ## Required Environment Variables
 
 Set these in the Render service:
@@ -61,6 +74,8 @@ Expected:
 {"status":"ok","env":"production"}
 ```
 
+If health shows `"env":"development"`, your Render env vars have not applied yet or the service has not redeployed with the new values.
+
 ## Register Telegram Webhook
 
 Use `curl` with the real token, service URL, and webhook secret:
@@ -83,6 +98,24 @@ Healthy signs:
 - webhook URL points to Render
 - no `last_error_message`
 - low `pending_update_count`
+
+## Switching From Railway To Render
+
+Once Render health is good, point Telegram away from Railway and onto Render:
+
+```bash
+curl -X POST "https://api.telegram.org/bot<TOKEN>/setWebhook" \
+  -d "url=https://YOUR-RENDER-URL/api/telegram/webhook" \
+  -d "secret_token=<WEBHOOK_SECRET>"
+```
+
+Then confirm:
+
+```bash
+curl "https://api.telegram.org/bot<TOKEN>/getWebhookInfo"
+```
+
+You should see the Render URL as the active webhook URL before considering the migration complete.
 
 ## Expected Runtime Behavior
 
