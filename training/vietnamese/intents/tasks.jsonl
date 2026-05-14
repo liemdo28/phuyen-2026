@@ -1,0 +1,4 @@
+{"text":"task kitchen chưa xong hả?","intent":"query_task","domain":"task","entities":{"entity_name":"kitchen"}}
+{"text":"dời task sang mai","intent":"update_task","domain":"task","entities":{"deadline_relative":"tomorrow"}}
+{"text":"overdue task nào rồi","intent":"query_task","domain":"task","entities":{"status":"overdue"}}
+

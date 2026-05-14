@@ -893,23 +893,22 @@ function isDuplicateTelegramUpdate(update) {
     : '';
   if (!Number.isFinite(updateId) && !fingerprint) return false;
 
-  const lock = LockService.getScriptLock();
-  lock.waitLock(5000);
-  try {
-    const props = PropertiesService.getScriptProperties();
-    const last  = Number(props.getProperty('tg_last_update_id') || '');
-    const seen  = JSON.parse(props.getProperty('tg_recent_fingerprints') || '[]');
-    if (fingerprint && seen.includes(fingerprint)) return true;
-    if (Number.isFinite(last) && Number.isFinite(updateId) && updateId <= last) return true;
-    if (Number.isFinite(updateId)) props.setProperty('tg_last_update_id', String(updateId));
-    if (fingerprint) {
-      seen.push(fingerprint);
-      props.setProperty('tg_recent_fingerprints', JSON.stringify(seen.slice(-20)));
-    }
-    return false;
-  } finally {
-    lock.releaseLock();
+  const cache = CacheService.getScriptCache();
+  const keys = [];
+
+  if (Number.isFinite(updateId)) {
+    keys.push(`tg_upd_${updateId}`);
   }
+  if (fingerprint) {
+    const digest = Utilities.base64EncodeWebSafe(
+      Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, fingerprint)
+    );
+    keys.push(`tg_fp_${digest}`);
+  }
+
+  if (keys.some(key => cache.get(key))) return true;
+  keys.forEach(key => cache.put(key, '1', 21600));
+  return false;
 }
 
 function isRateLimitedTelegramMessage_(msg) {
@@ -1596,11 +1595,30 @@ function sendSummary(cfg, chatId) {
 }
 
 function sendTG(token, chatId, text) {
-  UrlFetchApp.fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+  const res = UrlFetchApp.fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
     method:'post', contentType:'application/json',
     payload: JSON.stringify({ chat_id:chatId, text, parse_mode:'HTML' }),
     muteHttpExceptions:true,
   });
+  try {
+    const body = JSON.parse(res.getContentText() || '{}');
+    if (!body.ok) {
+      Logger.log(JSON.stringify({
+        label: 'sendTG_error',
+        chat_id: chatId,
+        status_code: res.getResponseCode(),
+        response: body,
+      }));
+    }
+  } catch (e) {
+    Logger.log(JSON.stringify({
+      label: 'sendTG_parse_error',
+      chat_id: chatId,
+      status_code: res.getResponseCode(),
+      raw: res.getContentText(),
+    }));
+    Logger.log(e);
+  }
 }
 
 function logTelegramEvent_(label, update) {
@@ -1707,7 +1725,6 @@ function clearTelegramPendingUpdates() {
 }
 
 function resetTelegramUpdateState_() {
-  const props = PropertiesService.getScriptProperties();
-  props.deleteProperty('tg_last_update_id');
-  props.deleteProperty('tg_recent_fingerprints');
+  // CacheService không hỗ trợ xoá hàng loạt theo prefix.
+  // Sau khi reset webhook với drop_pending_updates, TTL cache cũ sẽ tự hết hạn.
 }

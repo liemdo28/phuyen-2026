@@ -63,9 +63,31 @@ def normalize_domain(domain: str) -> str:
 def build_sheet_response(result: SheetsActionResult, success_text: str) -> AssistantResponse:
     if not result.success:
         return AssistantResponse(text=result.message)
+    row = result.rows[0] if result.rows else {}
+    natural_text = build_human_confirmation(row, fallback=success_text)
     return AssistantResponse(
-        text=success_text,
+        text=natural_text,
         action_summary=result.message,
-        memory_updates=result.rows[0] if result.rows else {},
+        memory_updates=row,
     )
 
+
+def build_human_confirmation(row: dict[str, object], fallback: str) -> str:
+    amount = row.get("amount")
+    note = row.get("note") or row.get("entity_name") or row.get("category")
+    domain_sheet = row.get("sheet_name")
+    if amount and note:
+        return f"Đã cập nhật {note} với số tiền {format_vnd(int(amount))}."
+    if domain_sheet and note:
+        return f"Đã cập nhật {note} trong sheet {domain_sheet}."
+    return fallback
+
+
+def format_vnd(amount: int) -> str:
+    if amount >= 1_000_000_000:
+        return f"{amount / 1_000_000_000:.1f} tỷ".replace(".0", "")
+    if amount >= 1_000_000:
+        return f"{amount / 1_000_000:.1f} triệu".replace(".0", "")
+    if amount >= 1_000:
+        return f"{amount / 1_000:.0f}k"
+    return f"{amount:,}đ".replace(",", ".")

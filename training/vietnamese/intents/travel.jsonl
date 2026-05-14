@@ -1,0 +1,4 @@
+{"text":"cafe nào chill gần đây?","intent":"travel_recommendation","domain":"travel","entities":{"style":"chill","distance":"nearby"}}
+{"text":"quán nào mở khuya?","intent":"travel_recommendation","domain":"travel","entities":{"open_late":true}}
+{"text":"thời tiết hôm nay sao","intent":"query_weather","domain":"travel","entities":{"date":"today"}}
+

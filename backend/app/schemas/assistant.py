@@ -7,13 +7,14 @@ class AssistantIntent(BaseModel):
     intent_type: str = "chat"
     domain: str = "general"
     confidence: float = 0.0
+    normalized_text: str = ""
     extracted_fields: dict[str, object] = Field(default_factory=dict)
     missing_fields: list[str] = Field(default_factory=list)
     reply_style: str = ""
+    action_name: str = ""
 
 
 class AssistantResponse(BaseModel):
     text: str
     action_summary: str | None = None
     memory_updates: dict[str, object] = Field(default_factory=dict)
-

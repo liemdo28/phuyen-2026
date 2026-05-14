@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from app.ai.context_resolver import build_context_snapshot
+from app.ai.entity_resolver import resolve_entity_reference
+from app.ai.workflow_reasoner import build_workflow_reasoning
 from app.adapters.google_sheets import GoogleSheetsAdapter
 from app.adapters.llm import LLMAdapter
 from app.adapters.media import MediaAdapter
@@ -76,7 +79,10 @@ class TelegramOrchestrator:
         await self.memory.append_user_turn(context, incoming_text)
         memory_summary = self.memory.summarize(context)
         intent_result = await self.llm.detect_intent(incoming_text, memory_summary)
+        intent_result.intent.extracted_fields = resolve_entity_reference(context, intent_result.intent.extracted_fields)
+        workflow_reasoning = build_workflow_reasoning(intent_result.intent)
         await self.action_logger.log("intent_detected", chat.id, user.id, intent_result.intent.model_dump())
+        await self.action_logger.log("workflow_reasoning", chat.id, user.id, workflow_reasoning | {"context": build_context_snapshot(context)})
         response = await self.workflow.execute(intent_result.intent)
 
         if response.memory_updates:

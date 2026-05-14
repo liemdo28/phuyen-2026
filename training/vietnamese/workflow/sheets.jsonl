@@ -1,0 +1,3 @@
+{"text":"update inventory hôm nay","intent":"update_inventory","domain":"inventory","sheet":"Inventory"}
+{"text":"tính tổng tháng này","intent":"summarize_expense","domain":"expense","sheet":"Chi Tiêu"}
+{"text":"đổi trạng thái task kitchen","intent":"update_task","domain":"task","sheet":"Tasks"}

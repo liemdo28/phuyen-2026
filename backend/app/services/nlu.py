@@ -1,22 +1,19 @@
 from __future__ import annotations
 
 import re
-from datetime import datetime, timedelta
 
+from app.ai.action_engine import infer_action_name
+from app.nlp.intent_preprocessor import preprocess_intent_text
+from app.nlp.money_parser import parse_money_amount, strip_money_phrases
+from app.nlp.relative_date_parser import parse_relative_date
 from app.schemas.assistant import AssistantIntent
-
-
-AMOUNT_PATTERNS = [
-    (re.compile(r"(\d+(?:[\.,]\d+)?)\s*(tr|triệu|trieu)\b", re.IGNORECASE), 1_000_000),
-    (re.compile(r"(\d+(?:[\.,]\d+)?)\s*(k|nghìn|nghin)\b", re.IGNORECASE), 1_000),
-]
 
 DOMAIN_KEYWORDS = {
     "expense": ["bill", "chi phí", "chi tiêu", "tiền", "điện", "nước", "sơn", "receipt", "hóa đơn", "hoá đơn"],
-    "task": ["task", "deadline", "overdue", "việc", "công việc", "kitchen", "todo"],
+    "task": ["task", "deadline", "overdue", "việc", "công việc", "kitchen", "todo", "chưa xong"],
     "inventory": ["inventory", "tồn kho", "kho", "stock"],
     "revenue": ["doanh thu", "revenue", "sales", "bán hàng"],
-    "travel": ["trời", "ăn ngon", "đi đâu", "cafe", "quán", "lịch trình", "đà lạt", "nearby", "gần đây"],
+    "travel": ["trời", "ăn ngon", "đi đâu", "cafe", "quán", "lịch trình", "đà lạt", "nearby", "gần đây", "mở khuya", "chill"],
     "crm": ["khách", "lead", "crm", "follow up"],
     "note": ["ghi chú", "note", "lưu thông tin"],
 }
@@ -29,10 +26,11 @@ REFERENCE_PATTERNS = ["cái trên", "cái hôm qua", "task kia", "task này", "b
 
 
 def heuristic_intent_parse(message_text: str, memory_summary: str = "") -> AssistantIntent:
-    normalized = normalize_text(message_text)
+    preprocessed = preprocess_intent_text(message_text)
+    normalized = preprocessed.normalized_text
     intent_type = detect_intent_type(normalized)
     domain = detect_domain(normalized)
-    extracted_fields = extract_common_fields(normalized)
+    extracted_fields = extract_common_fields(normalized, preprocessed)
     reply_style = build_reply_style(intent_type, domain, extracted_fields)
     confidence = 0.55
     if extracted_fields:
@@ -42,14 +40,18 @@ def heuristic_intent_parse(message_text: str, memory_summary: str = "") -> Assis
     if memory_summary and any(phrase in normalized for phrase in REFERENCE_PATTERNS):
         confidence += 0.1
 
-    return AssistantIntent(
+    intent = AssistantIntent(
         intent_type=intent_type,
         domain=domain,
         confidence=min(confidence, 0.95),
+        normalized_text=normalized,
         extracted_fields=extracted_fields,
         missing_fields=missing_fields_for_intent(intent_type, domain, extracted_fields),
         reply_style=reply_style,
+        action_name="",
     )
+    intent.action_name = infer_action_name(intent)
+    return intent
 
 
 def normalize_text(text: str) -> str:
@@ -77,17 +79,17 @@ def detect_domain(text: str) -> str:
     return "general"
 
 
-def extract_common_fields(text: str) -> dict[str, object]:
+def extract_common_fields(text: str, preprocessed=None) -> dict[str, object]:
     fields: dict[str, object] = {}
-    amount = extract_amount(text)
+    amount = preprocessed.money_amount if preprocessed else extract_amount(text)
     if amount is not None:
         fields["amount"] = amount
 
-    date_ref = extract_relative_date(text)
+    date_ref = preprocessed.iso_date if preprocessed else extract_relative_date(text)
     if date_ref:
         fields["date"] = date_ref
 
-    note = strip_amount_phrases(text)
+    note = preprocessed.stripped_text if preprocessed else strip_amount_phrases(text)
     if note and note != text:
         fields["note"] = note
 
@@ -103,74 +105,34 @@ def extract_common_fields(text: str) -> dict[str, object]:
     if deadline:
         fields["deadline"] = deadline
 
-    if "task" in text and "entity_name" not in fields:
-        entity_name = extract_named_entity_after_keyword(text, "task")
-        if entity_name:
-            fields["entity_name"] = entity_name
+    if "entity_name" not in fields:
+        for keyword in ["task", "cong viec"]:
+            if keyword in text:
+                entity_name = extract_named_entity_after_keyword(text, keyword)
+                if entity_name:
+                    fields["entity_name"] = entity_name
+                    break
 
     if "inventory" in text or "tồn kho" in text:
         fields["sheet_hint"] = "inventory"
+    if preprocessed and preprocessed.hints.get("continue_previous_flow"):
+        fields["continue_previous_flow"] = True
+    if preprocessed and preprocessed.hints.get("entity_reference"):
+        fields["entity_reference"] = preprocessed.hints["entity_reference"]
 
     return fields
 
 
 def extract_amount(text: str) -> int | None:
-    compact_text = text.replace(" ", "")
-    match = re.search(r"(\d+)\s*(?:tr|triệu|trieu)\s*(\d{1,3})(?!\d)", text, re.IGNORECASE)
-    if match:
-        major = int(match.group(1))
-        minor = int(match.group(2).ljust(3, "0")[:3])
-        return major * 1_000_000 + minor * 1_000
-
-    match = re.search(r"(\d+)tr(\d{1,3})(?!\d)", compact_text, re.IGNORECASE)
-    if match:
-        major = int(match.group(1))
-        minor = int(match.group(2).ljust(3, "0")[:3])
-        return major * 1_000_000 + minor * 1_000
-
-    for pattern, multiplier in AMOUNT_PATTERNS:
-        found = pattern.search(text)
-        if found:
-            value = float(found.group(1).replace(",", "."))
-            return int(round(value * multiplier))
-
-    raw_digits = re.search(r"\b(\d{4,10})\b", text)
-    if raw_digits:
-        return int(raw_digits.group(1))
-    return None
+    return parse_money_amount(text)
 
 
 def extract_relative_date(text: str) -> str | None:
-    now = datetime.now()
-    mapping = {
-        "hôm nay": now,
-        "hôm qua": now - timedelta(days=1),
-        "mai": now + timedelta(days=1),
-        "ngày mai": now + timedelta(days=1),
-        "mốt": now + timedelta(days=2),
-        "ngày mốt": now + timedelta(days=2),
-    }
-    for phrase, dt in mapping.items():
-        if phrase in text:
-            return dt.strftime("%Y-%m-%d")
-    weekday_match = re.search(r"thứ\s*(\d)", text)
-    if weekday_match:
-        target = int(weekday_match.group(1))
-        today = now.isoweekday()
-        offset = (target - today) % 7
-        offset = 7 if offset == 0 else offset
-        return (now + timedelta(days=offset)).strftime("%Y-%m-%d")
-    return None
+    return parse_relative_date(text)
 
 
 def strip_amount_phrases(text: str) -> str:
-    cleaned = text
-    cleaned = re.sub(r"\d+\s*(?:tr|triệu|trieu)\s*\d{1,3}(?!\d)", "", cleaned, flags=re.IGNORECASE)
-    cleaned = re.sub(r"\d+tr\d{1,3}(?!\d)", "", cleaned, flags=re.IGNORECASE)
-    for pattern, _ in AMOUNT_PATTERNS:
-        cleaned = pattern.sub("", cleaned)
-    cleaned = re.sub(r"\b\d{4,10}\b", "", cleaned)
-    return re.sub(r"\s+", " ", cleaned).strip(" -,:")
+    return strip_money_phrases(text)
 
 
 def infer_expense_category(text: str) -> str | None:

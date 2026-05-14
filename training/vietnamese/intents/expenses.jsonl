@@ -1,0 +1,4 @@
+{"text":"thêm bill điện 2tr6","intent":"add_expense","domain":"expense","entities":{"amount":2600000,"category":"utilities_electricity"}}
+{"text":"thêm tiền nước luôn","intent":"add_expense","domain":"expense","entities":{"category":"utilities_water","continue_previous_flow":true}}
+{"text":"cái trên thêm 500k","intent":"update_expense","domain":"expense","entities":{"amount":500000,"entity_reference":"previous_record"}}
+

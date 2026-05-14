@@ -1,0 +1,3 @@
+{"conversation":["thêm bill điện 2tr6","thêm tiền nước luôn"],"expected":[{"action":"add_expense","amount":2600000},{"action":"add_expense","continue_previous_flow":true,"category":"utilities_water"}]}
+{"conversation":["thêm chi phí sơn 700k","cái trên thêm 500k"],"expected":[{"action":"add_expense","amount":700000},{"action":"update_expense","amount":500000,"entity_reference":"previous_record"}]}
+
