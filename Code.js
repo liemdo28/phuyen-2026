@@ -136,6 +136,7 @@ function makeGopTienSheet(ss) {
   let savedData = null;
   if (!isNew) savedData = s.getRange('A4:D6').getValues();
 
+  try { const f = s.getFilter(); if (f) f.remove(); } catch(e) {}
   s.clear();
   s.getRange('A1').setValue('💵 KHOẢN GÓP TIỀN TRƯỚC').setFontSize(13).setFontWeight('bold');
   s.getRange('A1:D1').merge();
@@ -170,6 +171,7 @@ function makeChiTieuSheet(ss) {
     savedRows = s.getRange(2, 2, s.getLastRow() - 1, 7).getValues();
   }
 
+  try { const f = s.getFilter(); if (f) f.remove(); } catch(e) {}
   s.clear();
   s.getRange(1,1,1,8)
     .setValues([['STT','Ngày','Khoản Chi','Danh Mục','Số Tiền (VNĐ)','Nhóm Trả','Ghi Chú 1','Ghi Chú 2']])
@@ -353,6 +355,7 @@ function makeQuanAnSheet(ss) {
   if (!isNew && s.getLastRow() > 1)
     savedRows = s.getRange(2, 1, s.getLastRow() - 1, 9).getValues();
 
+  try { const f = s.getFilter(); if (f) f.remove(); } catch(e) {}
   s.clear();
   s.getRange('A1').setValue('🍜 DANH SÁCH QUÁN ĂN PHÚ YÊN').setFontSize(13).setFontWeight('bold');
   s.getRange('A1:I1').merge();
@@ -403,6 +406,7 @@ function makePhaIDemSheet(ss) {
   if (!isNew && s.getLastRow() > 2)
     savedRows = s.getRange(3, 1, s.getLastRow() - 2, 6).getValues();
 
+  try { const f = s.getFilter(); if (f) f.remove(); } catch(e) {}
   s.clear();
   s.getRange('A1').setValue('📦 DANH SÁCH ĐỒ CẦN ĐEM').setFontSize(13).setFontWeight('bold');
   s.getRange('A1:F1').merge();
@@ -726,6 +730,7 @@ function analyzeBuiltIn(planData, weather) {
 
 function buildSuggestionSheet(ss, text) {
   let s = ss.getSheetByName('Gợi Ý Lịch Trình') || ss.insertSheet('Gợi Ý Lịch Trình');
+  try { const f = s.getFilter(); if (f) f.remove(); } catch(e) {}
   s.clear();
   s.setColumnWidth(1, 680);
   text.split('\n').forEach((line, i) => {
@@ -746,6 +751,7 @@ function buildSuggestionSheet(ss, text) {
 function setupBotConfigSheet() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let s = ss.getSheetByName('⚙️ Bot Config') || ss.insertSheet('⚙️ Bot Config');
+  try { const f = s.getFilter(); if (f) f.remove(); } catch(e) {}
   s.clear();
 
   s.getRange('A1').setValue('⚙️ CÀI ĐẶT TELEGRAM BOT').setFontSize(13).setFontWeight('bold');
