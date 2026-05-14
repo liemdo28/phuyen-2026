@@ -49,15 +49,17 @@ function onOpen() {
     .addSeparator()
     .addItem('🤖 Cập nhật Thời Tiết & Gợi Ý',  'dailyAutoUpdate')
     .addSeparator()
-    .addItem('⏰ Bật tự động 7h sáng',          'setupDailyTrigger')
+    .addItem('⏰ Bật tự động 5h sáng',          'setupDailyTrigger')
     .addItem('⏹️ Tắt tự động',                  'deleteDailyTrigger')
     .addSeparator()
     .addItem('📱 Tạo sheet Bot Config',          'setupBotConfigSheet')
     .addItem('🔗 Cài đặt Webhook Telegram',      'setupTelegramWebhook')
     .addSeparator()
+    .addItem('☀️ Bật tin nhắn sáng 6h',         'setupMorningBriefingTrigger')
     .addItem('🔔 Bật nhắc nhở 20h tối',         'setupEveningReminderTrigger')
-    .addItem('🔕 Tắt nhắc nhở',                 'deleteEveningReminderTrigger')
+    .addItem('🔕 Tắt nhắc & tin nhắn sáng',     'deleteNotificationTriggers')
     .addSeparator()
+    .addItem('🔄 Đặt lại Góp Tiền về 0',        'resetGopTien')
     .addItem('🗑️ Xoá dữ liệu chi tiêu',         'clearData')
     .addToUi();
 }
@@ -70,9 +72,9 @@ function setupDailyTrigger() {
     if (t.getHandlerFunction() === 'dailyAutoUpdate') ScriptApp.deleteTrigger(t);
   });
   ScriptApp.newTrigger('dailyAutoUpdate')
-    .timeBased().atHour(7).everyDays(1).create();
+    .timeBased().atHour(5).everyDays(1).create();
   SpreadsheetApp.getUi().alert(
-    '✅ Đã bật tự động 7h sáng!\n\n' +
+    '✅ Đã bật tự động 5h sáng!\n\n' +
     '⚠️ Quan trọng: Extensions → Apps Script → ⚙️ Project Settings\n' +
     '→ Time zone = "Asia/Ho_Chi_Minh"'
   );
@@ -292,6 +294,21 @@ function clearData() {
   if (s) s.getRange('B2:H500').clearContent();
 }
 
+function resetGopTien() {
+  const ui = SpreadsheetApp.getUi();
+  if (ui.alert('Đặt lại tất cả số tiền Góp Tiền về 0?', ui.ButtonSet.YES_NO) !== ui.Button.YES) return;
+  const s = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Góp Tiền Trước');
+  if (!s) { ui.alert('Không tìm thấy sheet "Góp Tiền Trước".'); return; }
+  s.getRange('B4:D6').setValues([
+    [0, 'Chưa góp', ''],
+    [0, 'Chưa góp', ''],
+    [0, 'Chưa góp', ''],
+  ]);
+  s.getRange('B4:B6').setNumberFormat('#,##0 "đ"').setBackground('#fffbeb');
+  for (let r = 4; r <= 6; r++) s.getRange(r, 3).setBackground('#fed7d7');
+  ui.alert('✅ Đã đặt lại tất cả về 0!');
+}
+
 function openHuongDan() {
   SpreadsheetApp.getUi().alert(
     '📖 HƯỚNG DẪN SỬ DỤNG — PHÚ YÊN 2026\n' +
@@ -305,13 +322,13 @@ function openHuongDan() {
     '• 💵 Góp Tiền Trước → khoản đã góp ban đầu\n' +
     '• 📋 Chi Tiêu → nhập tay hoặc qua bot\n' +
     '• 📊 Tổng Hợp → quyết toán tự động\n' +
-    '• 🌤️ Thời Tiết → cập nhật 7h sáng\n\n' +
+    '• 🌤️ Thời Tiết → cập nhật 5h sáng\n\n' +
     '⚙️ CÀI ĐẶT (admin, 1 lần)\n' +
     '1. BotFather → lấy token → paste vào Bot Config B4\n' +
     '2. Thành viên nhắn /id → copy vào cột B Bot Config\n' +
     '3. Triển khai Web App → copy URL\n' +
     '4. Menu → 🔗 Cài đặt Webhook\n' +
-    '5. Menu → ⏰ Bật 7h sáng  +  🔔 Bật nhắc 20h tối\n\n' +
+    '5. Menu → ⏰ Bật 5h sáng  +  🔔 Bật nhắc 20h tối\n\n' +
     '⚠️ Sau mỗi lần deploy mới → cài lại Webhook!'
   );
 }
@@ -856,6 +873,112 @@ function sendDailyReport(cfg, chatId) {
 }
 
 // ════════════════════════════════════════════════════════
+//  ☀️ TIN NHẮN BUỔI SÁNG 6H — THỜI TIẾT + LỊCH TRÌNH
+// ════════════════════════════════════════════════════════
+
+// Tóm tắt ngắn gọn từng ngày để gửi Telegram
+const DAY_BRIEF = [
+  { theme: 'XUẤT PHÁT → TUY HÒA', items: [
+    '🚗 Khởi hành 5h–6h sáng, đổ đầy dầu',
+    '🏨 Check-in từ 14h, tắm biển Tuy Hòa 16h',
+    '🍜 Tối: bún cá ngừ, gỏi cá mai, bánh tráng nướng',
+  ]},
+  { theme: 'GÀNH ĐÁ ĐĨA + HÒN YẾN', items: [
+    '🌅 5h30 xuất phát (90km) — đá basalt Di sản quốc gia',
+    '🦀 Trưa: sò huyết Ô Loan nướng tại Sông Cầu',
+    '🏖️ Chiều: Vịnh Hòa — bãi ít người, nước xanh',
+  ]},
+  { theme: 'MŨI ĐIỆN + BÃI XÉP', items: [
+    '🌄 4h30 xuất phát — đón bình minh cực Đông VN',
+    '🏖️ Chiều: Bãi Xép (sóng nhỏ, an toàn cho bé)',
+    '🛒 Tối: cá bò khô, mực khô, cá ngừ đại dương',
+  ]},
+  { theme: 'ĐẦM Ô LOAN + THƯ GIÃN', items: [
+    '🛕 7h–9h: Tháp Nhạn — view đẹp',
+    '🚣 9h30: Đầm Ô Loan — kayak ~50k/người',
+    '🏊 Chiều: hồ bơi khách sạn — bé thích lắm',
+    '🐟 Tối đặc biệt: cá ngừ đại dương câu tay',
+  ]},
+  { theme: 'VỀ NHÀ', items: [
+    '🍜 6h: ăn sáng lần cuối — bún cá ngừ',
+    '🛒 7h: chợ Tuy Hòa mua đặc sản lần cuối',
+    '⛽ 8h30: đổ đầy dầu rồi lên đường',
+    '🏠 Dự kiến về 17h–19h',
+  ]},
+];
+
+function setupMorningBriefingTrigger() {
+  ScriptApp.getProjectTriggers().forEach(t => {
+    if (t.getHandlerFunction() === 'sendMorningBriefing') ScriptApp.deleteTrigger(t);
+  });
+  ScriptApp.newTrigger('sendMorningBriefing').timeBased().atHour(6).everyDays(1).create();
+  SpreadsheetApp.getUi().alert('✅ Đã bật tin nhắn buổi sáng 6h!\n\nMỗi sáng 6h bot sẽ gửi thời tiết + lịch trình ngày hôm đó.');
+}
+
+function deleteNotificationTriggers() {
+  const fns = ['sendMorningBriefing', 'sendEveningReminder'];
+  let n = 0;
+  ScriptApp.getProjectTriggers().forEach(t => {
+    if (fns.includes(t.getHandlerFunction())) { ScriptApp.deleteTrigger(t); n++; }
+  });
+  SpreadsheetApp.getUi().alert(n > 0 ? `✅ Đã tắt ${n} trigger.` : 'Không có trigger nào đang chạy.');
+}
+
+function sendMorningBriefing() {
+  let cfg;
+  try { cfg = loadConfig(); } catch(e) { Logger.log(e); return; }
+  const text = buildMorningBriefing();
+  getAllUserIds(cfg).forEach(uid => {
+    try { sendTG(cfg.token, uid, text); } catch(e) { Logger.log(e); }
+  });
+}
+
+function buildMorningBriefing() {
+  const now       = new Date();
+  const tripStart = new Date(CFG.tripStart + 'T00:00:00+07:00');
+  const dayIndex  = Math.round((now - tripStart) / 86400000);
+
+  if (dayIndex < 0) {
+    const daysLeft = Math.ceil((tripStart - now) / 86400000);
+    return `🌴 <b>Phú Yên 2026</b>\n\n⏳ Còn <b>${daysLeft} ngày</b> nữa xuất phát!\n📅 Khởi hành: 23/05/2026`;
+  }
+  if (dayIndex > 4) {
+    return `🌴 <b>Phú Yên 2026</b>\n\n✅ Chuyến đi đã kết thúc. Cảm ơn cả nhà! 🎉`;
+  }
+
+  const brief   = DAY_BRIEF[dayIndex];
+  const weather = fetchWeather();
+  const lines   = [
+    `☀️ <b>Chào buổi sáng! Ngày ${dayIndex+1}/5 — ${CFG.days[dayIndex]}</b>`,
+    `📍 <b>${brief.theme}</b>`,
+    '',
+    '🌤️ <b>Thời tiết hôm nay:</b>',
+  ];
+
+  const wxEntries = Object.entries(weather);
+  // Chỉ lấy 3 địa điểm gần nhất với ngày hôm nay để tin nhắn không quá dài
+  const relevant = wxEntries.filter(([,d]) => d).slice(0, 3);
+  if (relevant.length) {
+    relevant.forEach(([place, daily]) => {
+      const code   = daily.weathercode[dayIndex];
+      const tmax   = daily.temperature_2m_max[dayIndex];
+      const precip = (daily.precipitation_sum[dayIndex] || 0).toFixed(1);
+      lines.push(`  📍 ${place}: ${wxLabel(code)} · ${tmax}°C · Mưa ${precip}mm · ${wxOk(code, parseFloat(precip))}`);
+    });
+  } else {
+    lines.push('  (Chưa có dữ liệu — chạy Cập nhật Thời Tiết)');
+  }
+
+  lines.push('');
+  lines.push('📋 <b>Kế hoạch hôm nay:</b>');
+  brief.items.forEach(item => lines.push(`  ${item}`));
+  lines.push('');
+  lines.push('/baocao — xem chi tiêu hôm nay');
+
+  return lines.join('\n');
+}
+
+// ════════════════════════════════════════════════════════
 //  🔔 NHẮC NHỞ & TỔNG KẾT TỰ ĐỘNG 20H TỐI
 // ════════════════════════════════════════════════════════
 function setupEveningReminderTrigger() {
@@ -868,13 +991,6 @@ function setupEveningReminderTrigger() {
   );
 }
 
-function deleteEveningReminderTrigger() {
-  let n = 0;
-  ScriptApp.getProjectTriggers().forEach(t => {
-    if (t.getHandlerFunction() === 'sendEveningReminder') { ScriptApp.deleteTrigger(t); n++; }
-  });
-  SpreadsheetApp.getUi().alert(n > 0 ? '✅ Đã tắt nhắc nhở.' : 'Không có trigger nào đang chạy.');
-}
 
 function sendEveningReminder() {
   let cfg;
