@@ -10,7 +10,7 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           node-version: '18'
-      - run: npm install -g @google/clasp
+      - run: npm install -g @google/clasp@3.3.0
       - name: Write credentials
         env:
           CLASP_CREDS_B64: ${{ secrets.CLASP_CREDENTIALS }}
