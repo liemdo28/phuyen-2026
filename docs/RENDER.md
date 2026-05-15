@@ -46,6 +46,8 @@ Set these in the Render service:
 - `QUEUE_BACKEND=inline`
 - `TELEGRAM_BOT_TOKEN=...`
 - `TELEGRAM_WEBHOOK_SECRET=...`
+- `SHEETS_WEBAPP_URL=.../exec`
+- `SHEETS_API_SECRET=...`
 
 Optional:
 
@@ -53,6 +55,8 @@ Optional:
 - `ANTHROPIC_API_KEY=...`
 - `DEFAULT_SPREADSHEET_ID=...`
 - `GOOGLE_SERVICE_ACCOUNT_JSON=...`
+
+For the current command layer, `SHEETS_WEBAPP_URL` and `SHEETS_API_SECRET` are the important bridge to Apps Script / Google Sheets real data.
 
 ## Verify Health
 

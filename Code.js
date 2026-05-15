@@ -1728,3 +1728,243 @@ function resetTelegramUpdateState_() {
   // CacheService không hỗ trợ xoá hàng loạt theo prefix.
   // Sau khi reset webhook với drop_pending_updates, TTL cache cũ sẽ tự hết hạn.
 }
+
+// ============================================================================
+// APPS SCRIPT API LAYER
+// Dùng cho backend Python (Render) đọc dữ liệu thật từ Google Sheet qua doGet.
+// Không đụng vào doPost hiện có để tránh ảnh hưởng webhook Telegram cũ.
+// ============================================================================
+
+var API_SHEETS = {
+  chiTieu:   'Chi Tiêu',
+  gopTien:   'Góp Tiền Trước',
+  tongHop:   'Tổng Hợp',
+  quanAn:    'Quán Ăn',
+  phaiDem:   'Phải Đem',
+  botConfig: '⚙️ Bot Config',
+};
+
+var API_CATEGORIES = ['🏨 Lưu trú','🍜 Ăn uống','🚗 Di chuyển','⛽ Xăng dầu',
+                      '🎡 Vui chơi','🛒 Mua sắm','💊 Y tế','📦 Khác'];
+
+function doGet(e) {
+  try {
+    var params = (e && e.parameter) || {};
+    var action = params.action || '';
+    var expected = PropertiesService.getScriptProperties().getProperty('api_shared_secret');
+
+    if (!expected || params.token !== expected) {
+      return apiJson_({ ok: false, error: 'unauthorized' });
+    }
+
+    var data;
+    switch (action) {
+      case 'ping': data = { ok: true, pong: true }; break;
+      case 'expenses_recent': data = apiExpensesRecent_(params); break;
+      case 'expenses_total': data = apiExpensesTotal_(); break;
+      case 'report_full': data = apiReportFull_(); break;
+      case 'debts': data = apiDebts_(); break;
+      case 'contributions': data = apiContributions_(); break;
+      case 'packing_status': data = apiPackingStatus_(params); break;
+      case 'restaurants': data = apiRestaurants_(params); break;
+      case 'expenses_by_category': data = apiExpensesByCategory_(); break;
+      case 'expenses_by_day': data = apiExpensesByDay_(); break;
+      case 'members': data = apiMembers_(); break;
+      default:
+        data = { ok: false, error: 'unknown_action', action: action };
+    }
+    return apiJson_(data);
+  } catch (err) {
+    return apiJson_({ ok: false, error: 'exception', message: String(err) });
+  }
+}
+
+function apiJson_(obj) {
+  return ContentService
+    .createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function apiReadExpenses_() {
+  var s = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(API_SHEETS.chiTieu);
+  if (!s || s.getLastRow() < 2) return [];
+  var values = s.getRange(2, 1, s.getLastRow() - 1, 8).getValues();
+  var rows = [];
+  values.forEach(function (r) {
+    var khoanChi = String(r[2] || '').trim();
+    if (!khoanChi) return;
+    rows.push({
+      stt: r[0],
+      date: r[1] instanceof Date ? Utilities.formatDate(r[1], 'GMT+7', 'dd/MM/yyyy') : String(r[1] || ''),
+      note: khoanChi,
+      category: String(r[3] || '').trim(),
+      amount: Number(r[4]) || 0,
+      group: String(r[5] || '').trim(),
+      note1: String(r[6] || '').trim(),
+      note2: String(r[7] || '').trim(),
+    });
+  });
+  return rows;
+}
+
+function apiExpensesRecent_(params) {
+  var limit = Math.min(Math.max(parseInt(params.limit, 10) || 5, 1), 20);
+  var rows = apiReadExpenses_();
+  var recent = rows.slice(-limit).reverse();
+  return { ok: true, count: recent.length, total_rows: rows.length, items: recent };
+}
+
+function apiExpensesTotal_() {
+  var rows = apiReadExpenses_();
+  var total = 0, byGroup = {};
+  rows.forEach(function (r) {
+    total += r.amount;
+    byGroup[r.group || '(không nhóm)'] = (byGroup[r.group || '(không nhóm)'] || 0) + r.amount;
+  });
+  return { ok: true, total: total, by_group: byGroup, count: rows.length };
+}
+
+function apiExpensesByCategory_() {
+  var rows = apiReadExpenses_();
+  var byCat = {};
+  API_CATEGORIES.forEach(function (c) { byCat[c] = 0; });
+  rows.forEach(function (r) {
+    var c = r.category || '📦 Khác';
+    byCat[c] = (byCat[c] || 0) + r.amount;
+  });
+  return { ok: true, by_category: byCat, count: rows.length };
+}
+
+function apiExpensesByDay_() {
+  var rows = apiReadExpenses_();
+  var byDay = {};
+  rows.forEach(function (r) {
+    var d = r.date || '(không ngày)';
+    byDay[d] = (byDay[d] || 0) + r.amount;
+  });
+  return { ok: true, by_day: byDay, count: rows.length };
+}
+
+function apiContributions_() {
+  var s = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(API_SHEETS.gopTien);
+  if (!s) return { ok: false, error: 'sheet_not_found' };
+  var values = s.getRange('A4:D6').getValues();
+  var items = [], totalContributed = 0;
+  values.forEach(function (r) {
+    if (!r[0]) return;
+    var amount = Number(r[1]) || 0;
+    totalContributed += amount;
+    items.push({
+      group: String(r[0]).trim(),
+      amount: amount,
+      status: String(r[2] || '').trim(),
+      note: String(r[3] || '').trim(),
+    });
+  });
+  return { ok: true, total_contributed: totalContributed, items: items };
+}
+
+function apiDebts_() {
+  var s = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(API_SHEETS.tongHop);
+  if (!s) return { ok: false, error: 'sheet_not_found' };
+  var spentLV = Number(s.getRange('B9').getValue()) || 0;
+  var spentLH = Number(s.getRange('C9').getValue()) || 0;
+  var spentTotal = Number(s.getRange('D9').getValue()) || 0;
+  var balanceLV = Number(s.getRange('B19').getValue()) || 0;
+  var balanceLH = Number(s.getRange('C19').getValue()) || 0;
+  return {
+    ok: true,
+    spent: { 'Nhóm LV': spentLV, 'Nhóm LH': spentLH, total: spentTotal },
+    balance: { 'Nhóm LV': balanceLV, 'Nhóm LH': balanceLH },
+  };
+}
+
+function apiReportFull_() {
+  return {
+    ok: true,
+    total: apiExpensesTotal_(),
+    by_category: apiExpensesByCategory_(),
+    by_day: apiExpensesByDay_(),
+    contributions: apiContributions_(),
+    debts: apiDebts_(),
+  };
+}
+
+function apiPackingStatus_(params) {
+  var s = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(API_SHEETS.phaiDem);
+  if (!s || s.getLastRow() < 4) return { ok: false, error: 'sheet_not_found' };
+  var values = s.getRange(4, 1, s.getLastRow() - 3, 6).getValues();
+  var items = [], packed = 0, notPacked = 0, mandatoryLeft = [];
+  values.forEach(function (r) {
+    var name = String(r[1] || '').trim();
+    if (!name) return;
+    var isPacked = r[4] === true;
+    var note = String(r[5] || '').trim();
+    if (isPacked) packed++; else {
+      notPacked++;
+      if (note.indexOf('BẮT BUỘC') !== -1) mandatoryLeft.push(name);
+    }
+    items.push({
+      name: name,
+      group: String(r[2] || '').trim(),
+      quantity: String(r[3] || '').trim(),
+      packed: isPacked,
+      note: note,
+    });
+  });
+  var filter = (params.filter || '').toLowerCase();
+  var filtered = items;
+  if (filter === 'left') filtered = items.filter(function (i) { return !i.packed; });
+  if (filter === 'packed') filtered = items.filter(function (i) { return i.packed; });
+  return {
+    ok: true,
+    total: items.length,
+    packed: packed,
+    not_packed: notPacked,
+    mandatory_left: mandatoryLeft,
+    items: filtered,
+  };
+}
+
+function apiRestaurants_(params) {
+  var s = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(API_SHEETS.quanAn);
+  if (!s || s.getLastRow() < 3) return { ok: false, error: 'sheet_not_found' };
+  var values = s.getRange(3, 1, s.getLastRow() - 2, 9).getValues();
+  var items = [];
+  values.forEach(function (r) {
+    var name = String(r[1] || '').trim();
+    if (!name) return;
+    items.push({
+      name: name,
+      area: String(r[2] || '').trim(),
+      type: String(r[3] || '').trim(),
+      price_k: Number(r[4]) || 0,
+      lat: Number(r[5]) || null,
+      lon: Number(r[6]) || null,
+      on_route: String(r[7] || '').trim() === '✅',
+      note: String(r[8] || '').trim(),
+    });
+  });
+  var area = (params.area || '').toLowerCase();
+  if (area) items = items.filter(function (i) { return i.area.toLowerCase().indexOf(area) !== -1; });
+  return { ok: true, count: items.length, items: items };
+}
+
+function apiMembers_() {
+  var s = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(API_SHEETS.botConfig);
+  if (!s) return { ok: false, error: 'sheet_not_found' };
+  var values = s.getRange('A13:E62').getValues();
+  var items = [];
+  values.forEach(function (r) {
+    var group = String(r[3] || '').trim();
+    if (!group) return;
+    items.push({
+      username: String(r[0] || '').trim(),
+      user_id: String(r[1] || '').trim(),
+      name: String(r[2] || '').trim(),
+      group: group,
+      note: String(r[4] || '').trim(),
+    });
+  });
+  return { ok: true, count: items.length, items: items };
+}
