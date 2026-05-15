@@ -93,6 +93,13 @@ def test_timeout_returns_specific_message() -> None:
 
 def test_direct_link_fast_path_runs_before_commands() -> None:
     orchestrator = TelegramOrchestrator()
+    orchestrator.loop_guard = SimpleNamespace(
+        evaluate=lambda **_: SimpleNamespace(
+            allow_processing=True,
+            allow_reply=True,
+            reason="ok",
+        )
+    )
     orchestrator.memory = SimpleNamespace(
         get_context=AsyncMock(return_value=UserContext(chat_id=8654136346, user_id=8654136346))
     )

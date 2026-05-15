@@ -20,6 +20,21 @@ def test_sheet_link_request_returns_google_sheet_url(monkeypatch) -> None:
     assert "docs.google.com/spreadsheets/d/sheet123/edit" in response.text
 
 
+def test_default_sheet_url_falls_back_to_default_spreadsheet_url(monkeypatch) -> None:
+    orchestrator = object.__new__(TelegramOrchestrator)
+
+    monkeypatch.setattr(
+        TelegramOrchestrator,
+        "_default_sheet_id",
+        lambda self: "abc123",
+    )
+
+    assert (
+        TelegramOrchestrator._default_sheet_url(orchestrator)
+        == "https://docs.google.com/spreadsheets/d/abc123/edit"
+    )
+
+
 def test_maps_request_uses_recent_place_context() -> None:
     orchestrator = object.__new__(TelegramOrchestrator)
     context = UserContext(

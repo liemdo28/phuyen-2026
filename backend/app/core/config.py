@@ -21,6 +21,7 @@ class Settings:
     anthropic_model: str = os.getenv("ANTHROPIC_MODEL", "claude-3-5-sonnet-latest")
     google_service_account_json: str = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON", "")
     default_spreadsheet_id: str = os.getenv("DEFAULT_SPREADSHEET_ID", "")
+    default_spreadsheet_url: str = os.getenv("DEFAULT_SPREADSHEET_URL", "")
     sheets_webapp_url: str = os.getenv("SHEETS_WEBAPP_URL", "")
     sheets_api_secret: str = os.getenv("SHEETS_API_SECRET", "")
     redis_url: str = os.getenv("REDIS_URL", "")

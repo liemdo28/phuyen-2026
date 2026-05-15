@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 import unicodedata
 from datetime import datetime
 
@@ -102,6 +103,8 @@ _MAPS_TRIGGERS = (
     "mo map",
     "mo maps",
 )
+
+_SPREADSHEET_ID_RE = re.compile(r"/spreadsheets/d/([a-zA-Z0-9-_]+)")
 
 
 class TelegramOrchestrator:
@@ -544,7 +547,7 @@ class TelegramOrchestrator:
                     text=f"Đây là file Google Sheet của chuyến đi:\n{url}\n\nNếu muốn mình mở đúng sheet hoặc đúng phần chi tiêu/góp tiền thì nói tiếp nhé.",
                 )
             return AssistantResponse(
-                text="Mình chưa thấy `DEFAULT_SPREADSHEET_ID` ở môi trường này, nên chưa gửi link file sheet tự động được. Nếu bạn muốn, mình có thể giúp kiểm tra env này tiếp.",
+                text="Mình chưa thấy `DEFAULT_SPREADSHEET_ID` hoặc `DEFAULT_SPREADSHEET_URL` ở môi trường này, nên chưa gửi link file sheet tự động được. Nếu bạn muốn, mình có thể giúp kiểm tra env này tiếp.",
             )
 
         if self._is_maps_request(text):
@@ -570,9 +573,21 @@ class TelegramOrchestrator:
         return any(trigger in normalized for trigger in _MAPS_TRIGGERS)
 
     def _default_sheet_url(self) -> str:
-        if not settings.default_spreadsheet_id:
+        if settings.default_spreadsheet_url:
+            return settings.default_spreadsheet_url.strip()
+        spreadsheet_id = self._default_sheet_id()
+        if not spreadsheet_id:
             return ""
-        return f"https://docs.google.com/spreadsheets/d/{settings.default_spreadsheet_id}/edit"
+        return f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/edit"
+
+    def _default_sheet_id(self) -> str:
+        if settings.default_spreadsheet_id:
+            return settings.default_spreadsheet_id.strip()
+        if settings.default_spreadsheet_url:
+            match = _SPREADSHEET_ID_RE.search(settings.default_spreadsheet_url)
+            if match:
+                return match.group(1)
+        return ""
 
     def _resolve_recent_place(self, context, current_text: str):
         candidates = [current_text]
