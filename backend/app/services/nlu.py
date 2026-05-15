@@ -18,7 +18,7 @@ DOMAIN_KEYWORDS = {
     "note": ["ghi chú", "note", "lưu thông tin"],
 }
 
-CREATE_MARKERS = ["thêm", "tạo", "add", "create", "lưu"]
+CREATE_MARKERS = ["thêm", "bổ sung", "tao", "tạo", "add", "create", "lưu"]
 UPDATE_MARKERS = ["update", "cập nhật", "sửa", "đổi", "dời", "chỉnh"]
 DELETE_MARKERS = ["xóa", "xoá", "remove", "delete"]
 QUERY_MARKERS = ["bao nhiêu", "có", "tìm", "sao", "nào", "không", "hôm nay", "hôm qua"]
@@ -136,7 +136,7 @@ def strip_amount_phrases(text: str) -> str:
 
 
 def infer_expense_category(text: str) -> str | None:
-    if any(word in text for word in ["điện", "electricity"]):
+    if any(word in text for word in ["điện", "diện", "electricity"]):
         return "utilities_electricity"
     if any(word in text for word in ["sơn", "paint"]):
         return "materials_paint"

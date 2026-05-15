@@ -25,6 +25,8 @@ def preprocess_intent_text(text: str) -> PreprocessedIntent:
     hints: dict[str, object] = {}
     if "cung mot ngu canh" in normalized_text:
         hints["continue_previous_flow"] = True
+    if any(token in normalized_text for token in ["luon", "luôn", "bo sung", "bổ sung"]):
+        hints["continue_previous_flow"] = True
     if "ban ghi truoc do" in normalized_text:
         hints["entity_reference"] = "previous_record"
     if "ban ghi hom qua" in normalized_text:
