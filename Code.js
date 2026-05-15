@@ -847,6 +847,14 @@ function getBotToken(forceRefresh) {
 
 function doPost(e) {
   try {
+    // Hardened: guard against missing postData (can happen on redirects)
+    if (!e || !e.postData || !e.postData.contents) {
+      Logger.log('doPost: missing postData');
+      return ContentService.createTextOutput(
+        JSON.stringify({ ok: false, error: 'missing_postdata' })
+      ).setMimeType(ContentService.MimeType.JSON);
+    }
+
     const body = JSON.parse(e.postData.contents);
     if (body && typeof body.action === 'string' && body.action.indexOf('write_') === 0) {
       return apiHandleWriteAction_(body);
@@ -871,7 +879,12 @@ function doPost(e) {
       return ContentService.createTextOutput('OK');
     }
     handleMessage(update.message);
-  } catch(err) { Logger.log(err); }
+  } catch(err) {
+    Logger.log('doPost error: ' + err);
+    return ContentService.createTextOutput(
+      JSON.stringify({ ok: false, error: 'exception', message: String(err) })
+    ).setMimeType(ContentService.MimeType.JSON);
+  }
   return ContentService.createTextOutput('OK');
 }
 

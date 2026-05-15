@@ -57,38 +57,15 @@ class SheetsApiClient:
 
         payload = {"token": self.secret, "action": action, "data": data}
         try:
-            async with httpx.AsyncClient(timeout=self._timeout, follow_redirects=False) as client:
+            # follow_redirects=True: Apps Script redirects 302 → script.googleusercontent.com/echo
+            # httpx converts POST→GET on 302 (RFC-compliant); /echo accepts GET → returns JSON
+            async with httpx.AsyncClient(timeout=self._timeout, follow_redirects=True) as client:
                 response = await client.post(self.base_url, json=payload)
-
-                if response.status_code in {301, 302, 303, 307, 308} and response.headers.get("location"):
-                    redirect_url = response.headers["location"]
-                    response = await client.post(redirect_url, json=payload)
-
-                if response.status_code == 405:
-                    return await self._call_write_via_get(action, data)
-
                 response.raise_for_status()
         except httpx.HTTPError as exc:
-            if "405" in str(exc):
-                return await self._call_write_via_get(action, data)
             raise SheetsApiError(f"Không gọi được Apps Script (POST): {exc}") from exc
 
         return self._parse_json_response(response, "Apps Script POST")
-
-    async def _call_write_via_get(self, action: str, data: dict) -> dict:
-        flat_params = {
-            "action": action,
-            "token": self.secret,
-            **{key: "" if value is None else str(value) for key, value in data.items()},
-        }
-        try:
-            async with httpx.AsyncClient(timeout=self._timeout, follow_redirects=True) as client:
-                response = await client.get(self.base_url, params=flat_params)
-                response.raise_for_status()
-        except httpx.HTTPError as exc:
-            raise SheetsApiError(f"Không gọi được Apps Script (GET fallback): {exc}") from exc
-
-        return self._parse_json_response(response, "Apps Script GET fallback")
 
     async def ping(self) -> bool:
         data = await self._call("ping")
