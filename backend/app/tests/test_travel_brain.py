@@ -50,3 +50,18 @@ def test_travel_brain_marks_realtime_pressure() -> None:
 
     assert decision.live_context.traffic_pressure > 0
     assert decision.live_context.weather_pressure > 0
+
+
+def test_travel_brain_builds_civilization_state() -> None:
+    tz = ZoneInfo("Asia/Ho_Chi_Minh")
+    now = datetime(2026, 5, 15, 18, 20, tzinfo=tz)
+
+    decision = __import__("asyncio").run(
+        _assess("kẹt xe quá, đông quá, mệt và không biết nên đi tiếp hay nghỉ", now)
+    )
+
+    assert decision.city_flow.stress_propagation_risk > 0
+    assert decision.attention_protection.notification_budget >= 1
+    assert decision.emotional_zone.name in {"balanced_zone", "overstimulating_zone", "calming_zone", "recovery_zone"}
+    assert decision.collective_rhythm.healthy_pacing_score >= 0
+    assert decision.planetary.overload_score >= 0

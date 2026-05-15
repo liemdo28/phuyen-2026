@@ -35,7 +35,13 @@ def test_calm_policy_stays_quiet_when_low_risk() -> None:
 
 def test_recovery_engine_protects_energy() -> None:
     brain = __import__("asyncio").run(_brain("mệt quá, không biết đi đâu nữa"))
-    plan = RecoveryEngine().build_plan(brain.emotional, brain.operating)
+    plan = RecoveryEngine().build_plan(
+        brain.emotional,
+        brain.operating,
+        brain.city_flow,
+        brain.emotional_zone,
+        brain.collective_rhythm,
+    )
     assert plan.level in {"medium", "high", "light"}
     assert plan.actions
 
@@ -48,8 +54,30 @@ def test_agent_society_returns_human_centered_guidance() -> None:
         burnout_risk=brain.emotional.burnout_risk,
         option_count=brain.option_count,
         user_initiated=True,
+        attention_noise_risk=brain.attention_protection.noise_risk,
+        city_overload_risk=brain.city_flow.stress_propagation_risk,
     )
-    recovery = RecoveryEngine().build_plan(brain.emotional, brain.operating)
+    recovery = RecoveryEngine().build_plan(
+        brain.emotional,
+        brain.operating,
+        brain.city_flow,
+        brain.emotional_zone,
+        brain.collective_rhythm,
+    )
     society = TravelAgentSociety().coordinate(brain, calm, recovery)
 
     assert society.top_messages()
+
+
+def test_calm_policy_protects_attention_under_noise() -> None:
+    decision = CalmTechnologyPolicy().evaluate(
+        future_stress=0.45,
+        safety_risk=0.1,
+        burnout_risk=0.5,
+        option_count=4,
+        user_initiated=True,
+        attention_noise_risk=0.7,
+        city_overload_risk=0.5,
+    )
+    assert decision.max_option_count <= 2
+    assert decision.should_batch is True
