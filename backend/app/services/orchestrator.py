@@ -222,10 +222,13 @@ class TelegramOrchestrator:
                 user_lat = message.location.latitude
                 user_lon = message.location.longitude
                 # Persist GPS so all future queries in this session benefit from it
-                await self.memory.update_preferences(context, {
-                    "last_lat": user_lat,
-                    "last_lon": user_lon,
-                })
+                await self.memory.update_preferences(
+                    context,
+                    {
+                        "last_lat": user_lat,
+                        "last_lon": user_lon,
+                    },
+                )
                 await self.action_logger.log(
                     "location_saved", chat.id, user.id,
                     {"lat": user_lat, "lon": user_lon},
@@ -237,12 +240,12 @@ class TelegramOrchestrator:
                         reply_markup=_remove_keyboard(),
                     )
                 return
-
+            last_lat, last_lon = self._get_last_known_coordinates(context)
             # Detect location intent: "mở quán hải sản", "maps", "đường tới bãi xép", etc.
             location_intent = await self.location_intel.detect_intent(
                 incoming_text,
-                user_lat=user_lat or context.preferences.get("last_lat"),
-                user_lon=user_lon or context.preferences.get("last_lon"),
+                user_lat=user_lat or last_lat,
+                user_lon=user_lon or last_lon,
             )
             if location_intent.is_location_intent and incoming_text.strip():
                 has_coords = bool(
@@ -258,11 +261,30 @@ class TelegramOrchestrator:
                         )
                     return
                 try:
+                    explicit_place_name = self.location_intel.parse_location_from_text(
+                        incoming_text
+                    )
+                    search_lat = location_intent.user_lat or last_lat
+                    search_lon = location_intent.user_lon or last_lon
+                    if (
+                        search_lat is None
+                        or search_lon is None
+                    ) and self._location_query_needs_user_coordinates(
+                        incoming_text,
+                        location_intent,
+                        explicit_place_name,
+                    ):
+                        if decision.allow_reply:
+                            await self.telegram.send_message(
+                                chat.id,
+                                self._location_missing_coordinates_message(),
+                            )
+                        return
                     # Search indexed locations
                     results = await self.location_intel.search(
                         query=location_intent.query,
-                        user_lat=location_intent.user_lat or context.preferences.get("last_lat"),
-                        user_lon=location_intent.user_lon or context.preferences.get("last_lon"),
+                        user_lat=search_lat,
+                        user_lon=search_lon,
                         category=location_intent.category or None,
                         on_route=location_intent.on_route or None,
                         child_safe=location_intent.child_safe,
@@ -731,6 +753,51 @@ class TelegramOrchestrator:
         if "transport_context" in state.signals:
             updates["transport_sensitive"] = True
         return updates
+
+    def _get_last_known_coordinates(self, context) -> tuple[float | None, float | None]:
+        preferences = getattr(context, "preferences", {}) or {}
+        lat = preferences.get("last_lat")
+        lon = preferences.get("last_lon")
+        try:
+            lat = float(lat) if lat is not None else None
+            lon = float(lon) if lon is not None else None
+        except (TypeError, ValueError):
+            return None, None
+        return lat, lon
+
+    def _location_query_needs_user_coordinates(
+        self,
+        incoming_text: str,
+        location_intent: LocationIntentResult,
+        explicit_place_name: str | None,
+    ) -> bool:
+        if explicit_place_name:
+            return False
+        normalized = _strip_diacritics(incoming_text)
+        if "toi dang o dau" in normalized:
+            return True
+        markers = (
+            "dang o dau",
+            "o dau",
+            "gan day",
+            "gan",
+            "nearby",
+            "an gi",
+            "mua",
+            "tim tram dung",
+            "tram dung chan",
+            "dung chan",
+            "doi",
+        )
+        if any(marker in normalized for marker in markers):
+            return True
+        return bool(location_intent.category or not location_intent.query.strip())
+
+    def _location_missing_coordinates_message(self) -> str:
+        return (
+            "Mình chưa biết bạn đang ở đâu. Bạn nhấn 📎 → Location để share vị trí, "
+            "hoặc gõ một chỗ cụ thể như `gần Sun Village` hay `mở maps Bãi Xép` nhé."
+        )
 
     def _direct_link_response(self, incoming_text: str, context) -> AssistantResponse | None:
         text = incoming_text.lower().strip()
