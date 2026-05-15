@@ -2014,9 +2014,7 @@ function apiWriteExpense_(data) {
   var s = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(API_SHEETS.chiTieu);
   if (!s) return { ok: false, error: 'sheet_not_found' };
 
-  var lastRow = s.getLastRow();
-  var targetRow = lastRow + 1;
-  if (targetRow < 2) targetRow = 2;
+  var targetRow = apiFindFirstEmptyExpenseRow_(s);
 
   var ngay = data.ngay ? new Date(data.ngay) : new Date();
   var ghiChu = String(data.ghi_chu || '');
@@ -2047,6 +2045,18 @@ function apiWriteExpense_(data) {
       danh_muc: data.danh_muc,
     },
   };
+}
+
+function apiFindFirstEmptyExpenseRow_(sheet) {
+  var startRow = 2;
+  var maxRows = Math.max(sheet.getMaxRows() - startRow + 1, 1);
+  var values = sheet.getRange(startRow, 3, maxRows, 1).getDisplayValues();
+  for (var i = 0; i < values.length; i++) {
+    if (!String(values[i][0] || '').trim()) {
+      return startRow + i;
+    }
+  }
+  return sheet.getLastRow() + 1;
 }
 
 function apiWritePacking_(data) {
