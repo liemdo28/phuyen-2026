@@ -34,85 +34,108 @@ class TelegramOrchestrator:
             return
 
         user = message.from_user
-        if self._should_ignore_message(message):
+        chat = message.chat
+        incoming_text = ""
+        decision = None
+        try:
+            if self._should_ignore_message(message):
+                await self.action_logger.log(
+                    "ignored_message",
+                    message.chat.id,
+                    user.id if user else 0,
+                    {
+                        "update_id": update.update_id,
+                        "message_id": message.message_id,
+                        "is_bot": getattr(user, "is_bot", False),
+                        "text": message.text or message.caption or "",
+                    },
+                )
+                return
+
+            incoming_text = await self._extract_message_text(message)
+            decision = self.loop_guard.evaluate(
+                update_id=update.update_id,
+                message_id=message.message_id,
+                chat_id=chat.id,
+                user_id=user.id,
+                text=incoming_text,
+            )
             await self.action_logger.log(
-                "ignored_message",
-                message.chat.id,
+                "update_received",
+                chat.id,
+                user.id,
+                {
+                    "update_id": update.update_id,
+                    "message_id": message.message_id,
+                    "text": incoming_text,
+                    "from_user_id": user.id,
+                    "from_user_is_bot": user.is_bot,
+                    "decision": decision.reason,
+                },
+            )
+            if not decision.allow_processing:
+                return
+
+            context = await self.memory.get_context(chat_id=chat.id, user_id=user.id)
+            if not incoming_text:
+                if decision.allow_reply:
+                    await self.telegram.send_message(chat.id, "Mình đã nhận nội dung này, nhưng hiện chỉ mới xử lý tốt text/voice/ảnh theo pipeline AI mới.")
+                return
+
+            command_reply = await self.commands.handle(incoming_text.strip(), message)
+            if command_reply is not None:
+                await self.action_logger.log("command_response", chat.id, user.id, {"text": incoming_text, "reply": command_reply})
+                if decision.allow_reply:
+                    await self.telegram.send_message(chat.id, command_reply)
+                return
+
+            write_reply = await self.write_flow.handle(incoming_text, chat.id, user.id)
+            if write_reply is not None:
+                await self.action_logger.log("write_flow_response", chat.id, user.id, {"text": incoming_text, "reply": write_reply})
+                if decision.allow_reply:
+                    await self.telegram.send_message(chat.id, write_reply)
+                return
+
+            await self.action_logger.log("incoming_message", chat.id, user.id, {"text": incoming_text, "update_id": update.update_id})
+            await self.memory.append_user_turn(context, incoming_text)
+            memory_summary = self.memory.summarize(context)
+            intent_result = await self.llm.detect_intent(incoming_text, memory_summary)
+            intent_result.intent.extracted_fields = resolve_entity_reference(context, intent_result.intent.extracted_fields)
+            workflow_reasoning = build_workflow_reasoning(intent_result.intent)
+            await self.action_logger.log("intent_detected", chat.id, user.id, intent_result.intent.model_dump())
+            await self.action_logger.log("workflow_reasoning", chat.id, user.id, workflow_reasoning | {"context": build_context_snapshot(context)})
+            response = await self.workflow.execute(intent_result.intent)
+
+            if response.memory_updates:
+                entity_type = intent_result.intent.domain or "general"
+                entity_id = str(response.memory_updates.get("id", "latest"))
+                await self.memory.store_entity(context, entity_type, entity_id, response.memory_updates)
+                await self.action_logger.log("memory_entity_stored", chat.id, user.id, response.memory_updates)
+
+            await self.memory.append_assistant_turn(context, response.text)
+            await self.action_logger.log("assistant_response", chat.id, user.id, {"text": response.text})
+            if decision.allow_reply:
+                await self.telegram.send_message(chat.id, response.text)
+        except Exception as exc:
+            await self.action_logger.log(
+                "orchestrator_exception",
+                chat.id,
                 user.id if user else 0,
                 {
                     "update_id": update.update_id,
                     "message_id": message.message_id,
-                    "is_bot": getattr(user, "is_bot", False),
-                    "text": message.text or message.caption or "",
+                    "text": incoming_text,
+                    "error": str(exc),
                 },
             )
-            return
-
-        chat = message.chat
-        incoming_text = await self._extract_message_text(message)
-        decision = self.loop_guard.evaluate(
-            update_id=update.update_id,
-            message_id=message.message_id,
-            chat_id=chat.id,
-            user_id=user.id,
-            text=incoming_text,
-        )
-        await self.action_logger.log(
-            "update_received",
-            chat.id,
-            user.id,
-            {
-                "update_id": update.update_id,
-                "message_id": message.message_id,
-                "text": incoming_text,
-                "from_user_id": user.id,
-                "from_user_is_bot": user.is_bot,
-                "decision": decision.reason,
-            },
-        )
-        if not decision.allow_processing:
-            return
-
-        context = await self.memory.get_context(chat_id=chat.id, user_id=user.id)
-        if not incoming_text:
-            if decision.allow_reply:
-                await self.telegram.send_message(chat.id, "Mình đã nhận nội dung này, nhưng hiện chỉ mới xử lý tốt text/voice/ảnh theo pipeline AI mới.")
-            return
-
-        command_reply = await self.commands.handle(incoming_text.strip(), message)
-        if command_reply is not None:
-            await self.action_logger.log("command_response", chat.id, user.id, {"text": incoming_text, "reply": command_reply})
-            if decision.allow_reply:
-                await self.telegram.send_message(chat.id, command_reply)
-            return
-
-        write_reply = await self.write_flow.handle(incoming_text, chat.id, user.id)
-        if write_reply is not None:
-            await self.action_logger.log("write_flow_response", chat.id, user.id, {"text": incoming_text, "reply": write_reply})
-            if decision.allow_reply:
-                await self.telegram.send_message(chat.id, write_reply)
-            return
-
-        await self.action_logger.log("incoming_message", chat.id, user.id, {"text": incoming_text, "update_id": update.update_id})
-        await self.memory.append_user_turn(context, incoming_text)
-        memory_summary = self.memory.summarize(context)
-        intent_result = await self.llm.detect_intent(incoming_text, memory_summary)
-        intent_result.intent.extracted_fields = resolve_entity_reference(context, intent_result.intent.extracted_fields)
-        workflow_reasoning = build_workflow_reasoning(intent_result.intent)
-        await self.action_logger.log("intent_detected", chat.id, user.id, intent_result.intent.model_dump())
-        await self.action_logger.log("workflow_reasoning", chat.id, user.id, workflow_reasoning | {"context": build_context_snapshot(context)})
-        response = await self.workflow.execute(intent_result.intent)
-
-        if response.memory_updates:
-            entity_type = intent_result.intent.domain or "general"
-            entity_id = str(response.memory_updates.get("id", "latest"))
-            await self.memory.store_entity(context, entity_type, entity_id, response.memory_updates)
-            await self.action_logger.log("memory_entity_stored", chat.id, user.id, response.memory_updates)
-
-        await self.memory.append_assistant_turn(context, response.text)
-        await self.action_logger.log("assistant_response", chat.id, user.id, {"text": response.text})
-        if decision.allow_reply:
-            await self.telegram.send_message(chat.id, response.text)
+            if decision is None or decision.allow_reply:
+                try:
+                    await self.telegram.send_message(
+                        chat.id,
+                        "Mình vừa gặp lỗi khi xử lý tin nhắn này. Bạn thử gửi lại ngắn gọn hơn hoặc đợi mình một chút nhé.",
+                    )
+                except Exception:
+                    pass
 
     async def _extract_message_text(self, message) -> str:
         if message.text:
