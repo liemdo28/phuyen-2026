@@ -14,6 +14,7 @@ from app.services.action_logger import ActionLogger
 from app.services.command_handlers import CommandHandlers
 from app.services.loop_guard import LoopGuard
 from app.services.memory import MemoryService
+from app.services.maps_service import build_telegram_keyboard, find_place
 from app.services.travel_companion import TravelCompanionEngine
 from app.services.trip_context import TripContextService
 from app.services.write_flow_handler import WriteFlowHandler
@@ -192,9 +193,9 @@ class TelegramOrchestrator:
                 await self.action_logger.log("memory_entity_stored", chat.id, user.id, response.memory_updates)
 
             await self.memory.append_assistant_turn(context, response.text)
-            await self.action_logger.log("assistant_response", chat.id, user.id, {"text": response.text})
+            await self.action_logger.log("assistant_response", chat.id, user.id, {"text": response.text, "has_map_button": response.reply_markup is not None})
             if decision.allow_reply:
-                await self.telegram.send_message(chat.id, response.text)
+                await self.telegram.send_message(chat.id, response.text, reply_markup=response.reply_markup)
         except Exception as exc:
             await self.action_logger.log(
                 "orchestrator_exception",
@@ -220,12 +221,22 @@ class TelegramOrchestrator:
         trip_state = self.trip_context.get_state()
         trip_context_str = self.trip_context.format_for_prompt(trip_state, companion_state=companion_state)
         conversation_history = _context_to_messages(context)
-        reply = await self.llm.generate_companion_reply(
+        companion = await self.llm.generate_companion_reply(
             message_text,
             conversation_history,
             trip_context_str,
         )
-        return AssistantResponse(text=reply)
+        # Auto-attach Maps buttons if AI recommended a specific place
+        reply_markup = None
+        if companion.place_name:
+            place = find_place(companion.place_name)
+            if place:
+                reply_markup = build_telegram_keyboard(place)
+        return AssistantResponse(
+            text=companion.text,
+            reply_markup=reply_markup,
+            suggested_place_name=companion.place_name,
+        )
 
     async def _extract_message_text(self, message) -> str:
         if message.text:

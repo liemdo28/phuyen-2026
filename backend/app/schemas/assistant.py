@@ -18,3 +18,5 @@ class AssistantResponse(BaseModel):
     text: str
     action_summary: str | None = None
     memory_updates: dict[str, object] = Field(default_factory=dict)
+    reply_markup: dict | None = None  # Telegram InlineKeyboardMarkup
+    suggested_place_name: str | None = None  # place name extracted from AI response

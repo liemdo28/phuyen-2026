@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 from dataclasses import dataclass
 from pathlib import Path
@@ -14,11 +15,29 @@ logger = logging.getLogger(__name__)
 
 _COMPANION_PROMPT_PATH = Path(__file__).resolve().parents[1] / "prompts" / "companion_system_prompt.txt"
 
+_STRUCTURED_SUFFIX = """
+
+## Output Format
+Respond with valid JSON only, no markdown:
+{
+  "reply": "<your Vietnamese response here>",
+  "place_name": "<exact place name from local database if you recommend one, else null>"
+}
+
+The place_name must match one of the known Phú Yên places if applicable, otherwise null.
+"""
+
 
 @dataclass
 class LLMResult:
     intent: AssistantIntent
     raw: dict[str, Any]
+
+
+@dataclass
+class CompanionReply:
+    text: str
+    place_name: str | None = None
 
 
 class LLMAdapter:
@@ -34,17 +53,17 @@ class LLMAdapter:
         message_text: str,
         conversation_history: list[dict[str, str]],
         trip_context_str: str = "",
-    ) -> str:
+    ) -> CompanionReply:
         if not settings.openai_api_key:
             logger.warning("No OPENAI_API_KEY — using heuristic companion reply")
-            return _heuristic_companion_reply(message_text)
+            return CompanionReply(text=_heuristic_companion_reply(message_text))
 
         try:
             from openai import AsyncOpenAI
         except ImportError:
-            return _heuristic_companion_reply(message_text)
+            return CompanionReply(text=_heuristic_companion_reply(message_text))
 
-        system = _build_system_prompt(trip_context_str)
+        system = _build_system_prompt(trip_context_str) + _STRUCTURED_SUFFIX
         messages = _build_messages(system, conversation_history, message_text)
 
         try:
@@ -55,11 +74,13 @@ class LLMAdapter:
                     messages=messages,
                     temperature=0.7,
                     max_tokens=512,
+                    response_format={"type": "json_object"},
                 )
-            return response.choices[0].message.content or _heuristic_companion_reply(message_text)
+            raw = response.choices[0].message.content or "{}"
+            return _parse_companion_response(raw)
         except Exception as exc:
             logger.error("OpenAI companion reply error: %s", exc)
-            return _heuristic_companion_reply(message_text)
+            return CompanionReply(text=_heuristic_companion_reply(message_text))
 
 
 def _build_system_prompt(trip_context_str: str) -> str:
@@ -82,6 +103,18 @@ def _build_messages(
             messages.append({"role": role, "content": content})
     messages.append({"role": "user", "content": current_message})
     return messages
+
+
+def _parse_companion_response(raw: str) -> CompanionReply:
+    try:
+        data = json.loads(raw)
+        reply_text = data.get("reply") or data.get("message") or raw
+        place_name = data.get("place_name") or None
+        if place_name == "null" or place_name == "":
+            place_name = None
+        return CompanionReply(text=reply_text, place_name=place_name)
+    except Exception:
+        return CompanionReply(text=raw)
 
 
 def _heuristic_companion_reply(text: str) -> str:
