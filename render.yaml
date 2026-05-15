@@ -2,13 +2,21 @@ services:
   - type: web
     name: phuyen-2026
     runtime: docker
-    plan: free
+    plan: starter
     region: singapore
     dockerfilePath: ./Dockerfile
     dockerContext: .
     healthCheckPath: /health
     autoDeployTrigger: commit
+    disk:
+      name: phuyen-data
+      mountPath: /data
+      sizeGB: 1
     envVars:
+      - key: DB_PATH
+        value: /data/telegram_ai.sqlite3
+      - key: STATE_DIR
+        value: /data
       - key: APP_ENV
         value: production
       - key: QUEUE_BACKEND
