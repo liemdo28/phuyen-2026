@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 from dataclasses import dataclass, field
 
@@ -110,15 +111,16 @@ async def _call_openai(text: str, rule: RuleExtractResult) -> dict:
         raise RuntimeError("Chưa cấu hình OPENAI_API_KEY.")
 
     client = AsyncOpenAI(api_key=settings.openai_api_key)
-    response = await client.chat.completions.create(
-        model=settings.openai_model,
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": _build_user_prompt(text, rule)},
-        ],
-        temperature=0,
-        response_format={"type": "json_object"},
-    )
+    async with asyncio.timeout(8):
+        response = await client.chat.completions.create(
+            model=settings.openai_model,
+            messages=[
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": _build_user_prompt(text, rule)},
+            ],
+            temperature=0,
+            response_format={"type": "json_object"},
+        )
     content = response.choices[0].message.content or "{}"
     return json.loads(content)
 
@@ -156,12 +158,27 @@ def _rule_only_parse(text: str, rule: RuleExtractResult) -> ParsedWrite:
     )
 
 
+def _should_short_circuit_to_rule(rule: RuleExtractResult) -> bool:
+    if rule.write_intent != "expense" or rule.amount is None:
+        return False
+    # Expense cases with amount + a strong hint are cheap and reliable enough
+    # to parse locally, especially when the message contains long URLs.
+    if rule.urls:
+        return True
+    if rule.category or rule.group or rule.iso_date:
+        return True
+    return rule.confidence >= 0.6
+
+
 async def parse_write_message(text: str) -> ParsedWrite:
     text = (text or "").strip()
     if not text:
         return ParsedWrite(write_intent="unknown")
 
     rule = rule_extract(text)
+    if _should_short_circuit_to_rule(rule):
+        return _rule_only_parse(text, rule)
+
     try:
         llm_out = await _call_openai(text, rule)
     except Exception as exc:
