@@ -7,6 +7,7 @@ from zoneinfo import ZoneInfo
 from app.adaptation.rebalancer import ExperienceRebalancer, RebalanceState
 from app.behavior.profile_engine import TravelBehaviorEngine, TravelBehaviorProfile
 from app.dna.travel_dna import TravelDNAEngine, TravelDNAProfile
+from app.emotional.geography_engine import EmotionalGeographyEngine, GeographyState
 from app.emotional.journey_modeler import EmotionalJourneyModeler, EmotionalJourneyState
 from app.environment.env_monitor import EnvironmentMonitor, EnvironmentState
 from app.evolution.evolution_engine import EvolutionEngine, EvolutionState
@@ -20,12 +21,14 @@ from app.life.rhythm_memory import LifeRhythmMemory, LifeRhythmState
 from app.local.local_intelligence import LocalIntelligenceEngine, LocalIntelligenceState
 from app.memory.long_term_memory import LongTermMemoryEngine, LongTermMemoryState
 from app.models.domain import UserContext
+from app.orchestration.travel_flow_orchestrator import TravelFlowOrchestrator, TravelFlowState
 from app.personalization.human_rhythm import HumanRhythmEngine, HumanRhythmProfile
 from app.prediction.journey_prediction import JourneyPredictionEngine, PredictionState
 from app.realtime.world_model import RealtimeWorldModel, RealtimeWorldModelEngine
 from app.rhythm.rhythm_engine import RhythmEngine, RhythmState
 from app.safety.safety_engine import SafetyEngine, SafetyState
 from app.schemas.assistant import AssistantIntent
+from app.services.decision_fatigue_reducer import DecisionFatigueReducer, DecisionFatigueState
 from app.services.travel_companion import TravelCompanionState
 from app.social.group_dynamics import GroupDynamicsEngine, GroupDynamicsState
 from app.wellbeing.calm_ux import CalmTechnologyEngine, CalmUXState
@@ -65,6 +68,11 @@ class TravelOperatingState:
     life_memory: LifeMemoryState | None = None
     life_orchestration: LifeOrchestrationState | None = None
 
+    # Part 2 — Real-World Human Experience Orchestration
+    travel_flow: TravelFlowState | None = None
+    geography: GeographyState | None = None
+    decision_fatigue: DecisionFatigueState | None = None
+
 
 class TravelOperatingSystem:
     def __init__(self) -> None:
@@ -96,6 +104,11 @@ class TravelOperatingSystem:
         self.calm_ux = CalmTechnologyEngine()
         self.life_memory = LifeMemoryEngine()
         self.life_orchestrator = LifeOrchestrator()
+
+        # Part 2 — Real-World Human Experience Orchestration
+        self.travel_flow = TravelFlowOrchestrator()
+        self.geography = EmotionalGeographyEngine()
+        self.decision_fatigue = DecisionFatigueReducer()
 
     def assess(
         self,
@@ -140,6 +153,18 @@ class TravelOperatingSystem:
             life_context, life_rhythm, life_mem, emotional_journey,
             energy, wellbeing, calm_ux, travel_dna,
         )
+
+        # --- Part 2: Real-world human experience orchestration ---
+        travel_flow = self.travel_flow.assess(
+            hour=local_now.hour,
+            fatigue=companion_state.fatigue,
+            weather_risk=world.weather_risk,
+            tourist_density=world.tourist_density,
+            incoming_text=incoming_text,
+            preferences=context.preferences,
+        )
+        geography = self.geography.get_state()
+        decision_fatigue = self.decision_fatigue.assess(incoming_text, companion_state.fatigue)
 
         # --- Posture decision (Phase 6 + 8 enhance logic) ---
         posture = "balanced"
@@ -204,6 +229,9 @@ class TravelOperatingSystem:
             calm_ux=calm_ux,
             life_memory=life_mem,
             life_orchestration=life_orchestration,
+            travel_flow=travel_flow,
+            geography=geography,
+            decision_fatigue=decision_fatigue,
         )
 
     def enhance_reply(self, base_reply: str, state: TravelOperatingState, intent: AssistantIntent) -> str:
@@ -278,6 +306,18 @@ class TravelOperatingSystem:
         # --- Phase 8: Life memory continuity ---
         if state.life_memory and state.life_memory.continuity_message and state.life_memory.travel_life_chapter in ("experienced", "reflective"):
             hints.append(state.life_memory.continuity_message)
+
+        # --- Part 2: Travel flow arc hint ---
+        if state.travel_flow and state.travel_flow.hint:
+            hints.append(state.travel_flow.hint)
+
+        # --- Part 2: Decision fatigue (override max options) ---
+        if state.decision_fatigue and state.decision_fatigue.hint:
+            hints.insert(0, state.decision_fatigue.hint)
+
+        # --- Part 2: Geography insight ---
+        if state.geography and state.geography.hint:
+            hints.append(state.geography.hint)
 
         # --- Legacy hints ---
         hints.extend(state.local.insights[:1])
