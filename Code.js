@@ -70,6 +70,23 @@ function onOpen() {
     .addToUi();
 }
 
+function onEdit(e) {
+  try {
+    if (!e || !e.range) return;
+    const sheet = e.range.getSheet();
+    if (!sheet || sheet.getName() !== 'Góp Tiền Trước') return;
+
+    const row = e.range.getRow();
+    const col = e.range.getColumn();
+    if (row < 4 || row > 6 || col !== 2) return;
+
+    applyContributionStatusFormulas_(sheet);
+    syncContributionStatusColors_(sheet);
+  } catch (err) {
+    Logger.log(err);
+  }
+}
+
 // ════════════════════════════════════════════════════════
 //  TRIGGER TỰ ĐỘNG 7H SÁNG
 // ════════════════════════════════════════════════════════
@@ -148,17 +165,17 @@ function makeGopTienSheet(ss) {
 
   // Mặc định ban đầu tất cả 0 — không hardcode số tiền
   const defaultData = [
-    ['Nhóm LV', 0, 'Chưa góp', ''],
-    ['Nhóm LH', 0, 'Chưa góp', ''],
-    ['Nhóm CM', 0, 'Chưa góp', ''],
+    ['Nhóm LV', 0, '', ''],
+    ['Nhóm LH', 0, '', ''],
+    ['Nhóm CM', 0, '', ''],
   ];
-  s.getRange('A4:D6').setValues(savedData || defaultData);
+  var rows = savedData
+    ? savedData.map(function(r) { return [r[0], r[1], '', r[3]]; })
+    : defaultData;
+  s.getRange('A4:D6').setValues(rows);
   s.getRange('B4:B6').setNumberFormat('#,##0 "đ"').setBackground('#fffbeb');
-  // Màu trạng thái động theo giá trị
-  for (let r = 4; r <= 6; r++) {
-    const status = s.getRange(r, 3).getValue();
-    s.getRange(r, 3).setBackground(status === 'Đã chuyển' ? '#c6f6d5' : '#fed7d7');
-  }
+  applyContributionStatusFormulas_(s);
+  syncContributionStatusColors_(s);
   s.getRange('A4:A6').setFontWeight('bold');
   [90,170,120,230].forEach((w,i) => s.setColumnWidth(i+1,w));
 }
@@ -312,13 +329,30 @@ function resetGopTien() {
   const s = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Góp Tiền Trước');
   if (!s) { ui.alert('Không tìm thấy sheet "Góp Tiền Trước".'); return; }
   s.getRange('B4:D6').setValues([
-    [0, 'Chưa góp', ''],
-    [0, 'Chưa góp', ''],
-    [0, 'Chưa góp', ''],
+    [0, '', ''],
+    [0, '', ''],
+    [0, '', ''],
   ]);
   s.getRange('B4:B6').setNumberFormat('#,##0 "đ"').setBackground('#fffbeb');
-  for (let r = 4; r <= 6; r++) s.getRange(r, 3).setBackground('#fed7d7');
+  applyContributionStatusFormulas_(s);
+  syncContributionStatusColors_(s);
   ui.alert('✅ Đã đặt lại tất cả về 0!');
+}
+
+function applyContributionStatusFormulas_(sheet) {
+  var formulas = [
+    ['=IF(B4>0,"Đã chuyển","Chưa góp")'],
+    ['=IF(B5>0,"Đã chuyển","Chưa góp")'],
+    ['=IF(B6>0,"Đã chuyển","Chưa góp")'],
+  ];
+  sheet.getRange('C4:C6').setFormulas(formulas);
+}
+
+function syncContributionStatusColors_(sheet) {
+  for (var r = 4; r <= 6; r++) {
+    var amount = Number(sheet.getRange(r, 2).getValue()) || 0;
+    sheet.getRange(r, 3).setBackground(amount > 0 ? '#c6f6d5' : '#fed7d7');
+  }
 }
 
 function openHuongDan() {
@@ -2129,10 +2163,14 @@ function apiWriteContribution_(data) {
 
   if (data.so_tien !== undefined && data.so_tien !== null && data.so_tien !== '') {
     s.getRange(targetRow, 2).setValue(Number(data.so_tien) || 0);
+  } else if (String(data.trang_thai || '').trim() === 'Chưa góp') {
+    s.getRange(targetRow, 2).setValue(0);
   }
-  var trangThai = String(data.trang_thai || 'Đã chuyển').trim();
-  s.getRange(targetRow, 3).setValue(trangThai);
-  s.getRange(targetRow, 3).setBackground(trangThai === 'Đã chuyển' ? '#c6f6d5' : '#fed7d7');
+  applyContributionStatusFormulas_(s);
+  SpreadsheetApp.flush();
+  syncContributionStatusColors_(s);
+
+  var trangThai = String(s.getRange(targetRow, 3).getDisplayValue() || '').trim();
 
   return {
     ok: true,
