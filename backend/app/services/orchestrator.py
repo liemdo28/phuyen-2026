@@ -7,6 +7,7 @@ from app.adapters.google_sheets import GoogleSheetsAdapter
 from app.adapters.llm import LLMAdapter
 from app.adapters.media import MediaAdapter
 from app.adapters.telegram import TelegramAdapter
+from app.conversation.session_engine import ExpenseSessionEngine
 from app.orchestration.travel_operating_system import TravelOperatingSystem
 from app.schemas.assistant import AssistantIntent, AssistantResponse
 from app.schemas.telegram import TelegramUpdate
@@ -38,6 +39,7 @@ class TelegramOrchestrator:
         self.companion = TravelCompanionEngine()
         self.trip_context = TripContextService()
         self.travel_os = TravelOperatingSystem()
+        self.expense_session = ExpenseSessionEngine()
 
     async def handle_update(self, update: TelegramUpdate) -> None:
         message = update.message
@@ -98,6 +100,56 @@ class TelegramOrchestrator:
                 await self.action_logger.log("command_response", chat.id, user.id, {"text": incoming_text, "reply": command_reply})
                 if decision.allow_reply:
                     await self.telegram.send_message(chat.id, command_reply)
+                return
+
+            # Conversational expense session — multi-message fragment grouping
+            image_frags: list[dict] = []
+            if message.photo:
+                ocr = await self.media.extract_receipt(message.photo[-1].file_id)
+                if ocr:
+                    image_frags = [ocr]
+            session_result = self.expense_session.process(
+                incoming_text, chat.id, user.id, image_frags
+            )
+            await self.action_logger.log(
+                "expense_session",
+                chat.id,
+                user.id,
+                {
+                    "action": session_result.action,
+                    "ready_to_commit": session_result.ready_to_commit,
+                    "reply": session_result.reply,
+                    "session_id": session_result.session.session_id if session_result.session else None,
+                    "confidence": session_result.session.confidence if session_result.session else None,
+                },
+            )
+            if session_result.action in ("collecting", "ignored", "expired", "no_session"):
+                # Still accumulating or irrelevant — no reply yet, but don't short-circuit
+                if session_result.action in ("collecting", "ignored"):
+                    # Let message also flow through full AI pipeline for context
+                    pass
+            elif session_result.reply and decision.allow_reply:
+                await self.telegram.send_message(chat.id, session_result.reply)
+                if session_result.ready_to_commit:
+                    committed = self.expense_session.commit(chat.id, user.id)
+                    if committed:
+                        # Build a structured expense intent and run it through workflow
+                        from app.schemas.assistant import AssistantIntent as _Intent
+                        commit_intent = _Intent(
+                            intent_type="create",
+                            domain="expense",
+                            extracted_fields={
+                                "amount": committed.amount,
+                                "category": committed.category,
+                                "subcategory": committed.subcategory,
+                                "meal_type": committed.meal_type,
+                                "location": committed.location,
+                                "description": committed.description,
+                                "source": committed.source,
+                                "session_id": committed.session_id,
+                            },
+                        )
+                        await self.workflow.execute(commit_intent)
                 return
 
             write_reply = await self.write_flow.handle(incoming_text, chat.id, user.id)
