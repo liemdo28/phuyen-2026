@@ -32,6 +32,9 @@ class MemoryService:
                         timestamp=datetime.fromisoformat(entity.created_at),
                     )
                 )
+            # Restore persisted preferences (learning signals, travel DNA, life memory, etc.)
+            persisted_prefs = self.store.get_preferences(chat_id, user_id)
+            context.preferences.update(persisted_prefs)
             self._contexts[key] = context
         return self._contexts[key]
 
@@ -52,6 +55,9 @@ class MemoryService:
 
     async def update_preferences(self, context: UserContext, values: dict[str, object]) -> None:
         context.preferences.update(values)
+        # Persist to SQLite so learning signals survive process restarts
+        if values:
+            self.store.upsert_preferences(context.chat_id, context.user_id, values)
 
     def summarize(self, context: UserContext) -> str:
         recent_messages = [f"{turn.role}: {turn.text}" for turn in context.conversation[-6:]]

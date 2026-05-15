@@ -69,13 +69,13 @@ class TestLifeContextEngine:
         assert state.life_mode in ("reflective", "normal")
 
     def test_recovery_mode_on_burnout(self):
-        ctx = make_context(preferences={"life_recovery_need": 0.7})
+        ctx = make_context(preferences={"lc_recovery_need": 0.7})
         state = self.engine.assess(ctx, "kiệt sức rồi, cần nạp pin")
         assert state.life_mode == "recovery"
         assert state.travel_recommendation_bias == "recovery"
 
     def test_escape_mode_on_work_stress_and_busy(self):
-        ctx = make_context(preferences={"life_work_stress": 0.6, "life_lifestyle_pressure": 0.65})
+        ctx = make_context(preferences={"lc_work_stress": 0.6, "lc_lifestyle_pressure": 0.65})
         state = self.engine.assess(ctx, "bận quá, deadline, áp lực")
         assert state.life_mode in ("escape", "normal")
 
@@ -180,7 +180,7 @@ class TestWellbeingOptimizer:
         return self.optimizer.optimize(life_context, life_rhythm, energy, emotional)
 
     def test_critical_grade_on_full_burnout(self):
-        ctx = make_context(preferences={"life_recovery_need": 0.8, "life_work_stress": 0.8})
+        ctx = make_context(preferences={"lc_recovery_need": 0.8, "lc_work_stress": 0.8})
         companion = make_companion(fatigue=0.95, overwhelm=0.9, stress=0.9)
         state = self._assess(companion, ctx, "burnout hoàn toàn, không nổi")
         assert state.score.grade in ("critical", "stressed")
@@ -193,7 +193,7 @@ class TestWellbeingOptimizer:
         assert state.score.grade in ("thriving", "good", "neutral")
 
     def test_recovery_optimize_on_burnout(self):
-        ctx = make_context(preferences={"life_recovery_need": 0.75})
+        ctx = make_context(preferences={"lc_recovery_need": 0.75})
         companion = make_companion(fatigue=0.9, overwhelm=0.85)
         state = self._assess(companion, ctx, "kiệt sức, burnout")
         assert state.optimize_for == "recovery"
@@ -211,19 +211,19 @@ class TestWellbeingOptimizer:
         assert state.optimize_for in ("exploration", "joy", "balance")
 
     def test_social_optimize_on_social_energy(self):
-        ctx = make_context(preferences={"life_social_energy": 0.8})
+        ctx = make_context(preferences={"lc_social_energy": 0.8})
         companion = make_companion(excitement=0.6)
         state = self._assess(companion, ctx, "bạn bè rủ đi, tụ tập nhóm")
         assert state.optimize_for in ("social", "balance")
 
     def test_decision_load_minimal_on_critical(self):
-        ctx = make_context(preferences={"life_recovery_need": 0.9})
+        ctx = make_context(preferences={"lc_recovery_need": 0.9})
         companion = make_companion(fatigue=0.95, confusion=0.8, overwhelm=0.9)
         state = self._assess(companion, ctx, "quá tải rồi, không thở được, burnout hoàn toàn")
         assert state.decision_load in ("minimal", "low")
 
     def test_wellbeing_insights_on_critical(self):
-        ctx = make_context(preferences={"life_recovery_need": 0.8})
+        ctx = make_context(preferences={"lc_recovery_need": 0.8})
         companion = make_companion(fatigue=0.9, overwhelm=0.85)
         state = self._assess(companion, ctx, "burnout hoàn toàn")
         assert len(state.wellbeing_insights) > 0
@@ -272,7 +272,7 @@ class TestTravelDNAEngine:
         assert dna.dna_type == "energetic_foodie"
 
     def test_slow_traveler_on_recovery_mode(self):
-        ctx = make_context(preferences={"life_recovery_need": 0.75})
+        ctx = make_context(preferences={"lc_recovery_need": 0.75})
         text = "thư thả thôi, chậm chậm, không vội"
         behavior = self.behavior.assess(ctx, text)
         life_ctx = self.life_context.assess(ctx, text)
@@ -294,7 +294,7 @@ class TestTravelDNAEngine:
         assert dna.dna_type in ("social_traveler", "calm_explorer", "energetic_foodie")
 
     def test_reflective_traveler_on_solitude(self):
-        ctx = make_context(preferences={"life_social_energy": 0.1})
+        ctx = make_context(preferences={"lc_social_energy": 0.1})
         text = "một mình, chiêm nghiệm, ý nghĩa"
         behavior = self.behavior.assess(ctx, text)
         life_ctx = self.life_context.assess(ctx, text)
@@ -314,7 +314,7 @@ class TestTravelDNAEngine:
         assert len(dna.personalization_hints) > 0
 
     def test_pacing_score_slow_for_slow_traveler(self):
-        ctx = make_context(preferences={"life_recovery_need": 0.7})
+        ctx = make_context(preferences={"lc_recovery_need": 0.7})
         text = "nhẹ nhàng thư giãn, nghỉ ngơi, chill, không vội"
         behavior, life_ctx, rhythm = self._profile_and_context(ctx, text)
         life_ctx.life_mode = "recovery"
@@ -350,14 +350,14 @@ class TestCalmTechnologyEngine:
         return self.engine.assess(life_ctx, emotional, wellbeing, dna)
 
     def test_minimal_reply_on_burnout(self):
-        ctx = make_context(preferences={"life_recovery_need": 0.85})
+        ctx = make_context(preferences={"lc_recovery_need": 0.85})
         companion = make_companion(fatigue=0.9, overwhelm=0.9, confusion=0.8)
         state = self._full_assess(companion, ctx, "burnout hoàn toàn")
         assert state.reply_length_mode in ("minimal", "short")
         assert state.hint_count_limit <= 2
 
     def test_silent_proactive_on_critical(self):
-        ctx = make_context(preferences={"life_recovery_need": 0.9})
+        ctx = make_context(preferences={"lc_recovery_need": 0.9})
         companion = make_companion(fatigue=0.95, overwhelm=0.95, stress=0.9)
         state = self._full_assess(companion, ctx, "không nổi nữa")
         assert state.proactive_level in ("silent", "quiet")
@@ -375,7 +375,7 @@ class TestCalmTechnologyEngine:
         assert state.decision_simplification is True
 
     def test_invisible_mode_on_recovery_burnout(self):
-        ctx = make_context(preferences={"life_recovery_need": 0.8})
+        ctx = make_context(preferences={"lc_recovery_need": 0.8})
         companion = make_companion(fatigue=0.9, overwhelm=0.85)
         state = self._full_assess(companion, ctx, "burnout, kiệt sức")
         assert state.invisible_mode is True or state.proactive_level in ("silent", "quiet")
@@ -489,7 +489,7 @@ class TestLifeOrchestrator:
         assert state.trip_as_therapy is True
 
     def test_travel_is_context_on_life_mode(self):
-        ctx = make_context(preferences={"life_recovery_need": 0.75})
+        ctx = make_context(preferences={"lc_recovery_need": 0.75})
         companion = make_companion(fatigue=0.85)
         state = self._full_orchestrate(companion, ctx, "kiệt sức, burnout, không nổi nữa")
         assert state.travel_is_context is True
@@ -555,9 +555,9 @@ class TestPhase8Integration:
     def test_burned_out_worker_scenario(self):
         """Burned-out user with work stress gets recovery-optimized trip."""
         ctx = make_context(preferences={
-            "life_work_stress": 0.8,
-            "life_recovery_need": 0.75,
-            "life_lifestyle_pressure": 0.7,
+            "lc_work_stress": 0.8,
+            "lc_recovery_need": 0.75,
+            "lc_lifestyle_pressure": 0.7,
         })
         companion = make_companion(fatigue=0.8, stress=0.7, overwhelm=0.6)
         state = self.tos.assess(
@@ -572,7 +572,7 @@ class TestPhase8Integration:
     def test_solo_reflective_traveler_scenario(self):
         """Solo reflective traveler gets quiet, meaningful recommendations."""
         ctx = make_context(preferences={
-            "life_social_energy": 0.1,
+            "lc_social_energy": 0.1,
             "lr_solo_moment_count": 10,
             "lr_social_interaction_count": 1,
         })
@@ -589,7 +589,7 @@ class TestPhase8Integration:
     def test_thriving_social_group_scenario(self):
         """Energized social group gets full, social-optimized itinerary."""
         ctx = make_context(preferences={
-            "life_social_energy": 0.85,
+            "lc_social_energy": 0.85,
             "lr_cumulative_enjoyment": 0.8,
         })
         companion = make_companion(excitement=0.9, fatigue=0.1, stress=0.0)
@@ -630,7 +630,7 @@ class TestPhase8Integration:
 
     def test_calm_ux_limits_hints_on_stressed(self):
         """Stressed user gets fewer hints — calm technology in action."""
-        ctx = make_context(preferences={"life_recovery_need": 0.7})
+        ctx = make_context(preferences={"lc_recovery_need": 0.7})
         companion = make_companion(fatigue=0.8, overwhelm=0.7, confusion=0.6)
         state = self.tos.assess(ctx, "mệt quá, burnout", companion, _intent(), VN_NOW)
         assert state.calm_ux.hint_count_limit <= 2

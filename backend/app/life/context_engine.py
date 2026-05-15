@@ -83,12 +83,12 @@ class LifeContextEngine:
         busy = min(1.0, sum(1 for t in LIFESTYLE_BUSY if t in combined) * 0.2)
         free = min(1.0, sum(1 for t in LIFESTYLE_FREE if t in combined) * 0.18)
 
-        # Retrieve persisted life context
-        prev_work_stress = float(prefs.get("life_work_stress", 0.0))
-        prev_recovery = float(prefs.get("life_recovery_need", 0.0))
-        prev_social = float(prefs.get("life_social_energy", 0.5))
-        prev_emo = float(prefs.get("life_emotional_baseline", 0.5))
-        prev_lifestyle = float(prefs.get("life_lifestyle_pressure", 0.5))
+        # Retrieve persisted life context (lc_ namespace)
+        prev_work_stress = float(prefs.get("lc_work_stress", 0.0))
+        prev_recovery = float(prefs.get("lc_recovery_need", 0.0))
+        prev_social = float(prefs.get("lc_social_energy", 0.5))
+        prev_emo = float(prefs.get("lc_emotional_baseline", 0.5))
+        prev_lifestyle = float(prefs.get("lc_lifestyle_pressure", 0.5))
 
         # EMA updates
         d = 1 - self._DECAY

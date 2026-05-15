@@ -7,6 +7,7 @@ from app.adapters.google_sheets import GoogleSheetsAdapter
 from app.adapters.llm import LLMAdapter
 from app.adapters.media import MediaAdapter
 from app.adapters.telegram import TelegramAdapter
+from app.orchestration.travel_operating_system import TravelOperatingSystem
 from app.schemas.assistant import AssistantIntent, AssistantResponse
 from app.schemas.telegram import TelegramUpdate
 from app.services.action_logger import ActionLogger
@@ -36,6 +37,7 @@ class TelegramOrchestrator:
         self.write_flow = WriteFlowHandler()
         self.companion = TravelCompanionEngine()
         self.trip_context = TripContextService()
+        self.travel_os = TravelOperatingSystem()
 
     async def handle_update(self, update: TelegramUpdate) -> None:
         message = update.message
@@ -152,9 +154,20 @@ class TelegramOrchestrator:
                 },
             )
 
+            # Phase 6-8: Full Travel Intelligence assessment for all message types
+            tos_state = self.travel_os.assess(
+                context,
+                incoming_text,
+                companion_state,
+                intent_result.intent,
+            )
+            await self.memory.update_preferences(context, tos_state.preference_updates)
+
             if _is_companion_mode(intent_result.intent):
                 # Travel/chat/general → OpenAI with trip context + emotional state
                 response = await self._companion_reply(incoming_text, context, companion_state)
+                # Enrich reply with Phase 6-8 intelligence (emotional journey, life context, etc.)
+                response.text = self.travel_os.enhance_reply(response.text, tos_state, intent_result.intent)
             else:
                 # Structured action (expense/task/etc.) → sheets workflow
                 response = await self.workflow.execute(intent_result.intent, companion_state=companion_state)

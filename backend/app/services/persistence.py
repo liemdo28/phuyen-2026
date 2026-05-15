@@ -76,6 +76,19 @@ class PersistenceStore:
                 )
                 """
             )
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS user_preferences (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    chat_id INTEGER NOT NULL,
+                    user_id INTEGER NOT NULL,
+                    pref_key TEXT NOT NULL,
+                    value_json TEXT NOT NULL,
+                    updated_at TEXT NOT NULL,
+                    UNIQUE(chat_id, user_id, pref_key)
+                )
+                """
+            )
             conn.commit()
 
     def append_turn(self, chat_id: int, user_id: int, role: str, text: str) -> None:
@@ -143,6 +156,29 @@ class PersistenceStore:
             )
             for row in rows
         ]
+
+    def upsert_preferences(self, chat_id: int, user_id: int, updates: dict[str, Any]) -> None:
+        now = datetime.now(timezone.utc).isoformat()
+        with self._lock, self._connect() as conn:
+            for key, value in updates.items():
+                conn.execute(
+                    """
+                    INSERT INTO user_preferences(chat_id, user_id, pref_key, value_json, updated_at)
+                    VALUES (?, ?, ?, ?, ?)
+                    ON CONFLICT(chat_id, user_id, pref_key) DO UPDATE
+                    SET value_json = excluded.value_json, updated_at = excluded.updated_at
+                    """,
+                    (chat_id, user_id, key, json.dumps(value), now),
+                )
+            conn.commit()
+
+    def get_preferences(self, chat_id: int, user_id: int) -> dict[str, Any]:
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT pref_key, value_json FROM user_preferences WHERE chat_id = ? AND user_id = ?",
+                (chat_id, user_id),
+            ).fetchall()
+        return {row[0]: json.loads(row[1]) for row in rows}
 
     def log_action(self, kind: str, chat_id: int, user_id: int, payload: dict[str, Any]) -> None:
         now = datetime.now(timezone.utc).isoformat()
