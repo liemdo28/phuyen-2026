@@ -38,6 +38,25 @@ class SheetsApiClient:
             raise SheetsApiError(f"Apps Script báo lỗi: {data.get('error', 'unknown')}")
         return data
 
+    async def _call_post(self, action: str, data: dict) -> dict:
+        if not self.configured:
+            raise SheetsApiError("Chưa cấu hình SHEETS_WEBAPP_URL / SHEETS_API_SECRET trên môi trường deploy.")
+
+        payload = {"token": self.secret, "action": action, "data": data}
+        try:
+            async with httpx.AsyncClient(timeout=self._timeout, follow_redirects=True) as client:
+                response = await client.post(self.base_url, json=payload)
+                response.raise_for_status()
+                result = response.json()
+        except httpx.HTTPError as exc:
+            raise SheetsApiError(f"Không gọi được Apps Script (POST): {exc}") from exc
+        except ValueError as exc:
+            raise SheetsApiError(f"Apps Script trả về không phải JSON: {exc}") from exc
+
+        if not result.get("ok"):
+            raise SheetsApiError(f"Apps Script báo lỗi: {result.get('error', 'unknown')}")
+        return result
+
     async def ping(self) -> bool:
         data = await self._call("ping")
         return bool(data.get("pong"))
@@ -71,3 +90,15 @@ class SheetsApiClient:
 
     async def members(self) -> dict:
         return await self._call("members")
+
+    async def write_expense(self, item: dict) -> dict:
+        return await self._call_post("write_expense", item)
+
+    async def write_packing(self, item: dict) -> dict:
+        return await self._call_post("write_packing", item)
+
+    async def write_contribution(self, item: dict) -> dict:
+        return await self._call_post("write_contribution", item)
+
+    async def write_restaurant(self, item: dict) -> dict:
+        return await self._call_post("write_restaurant", item)

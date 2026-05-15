@@ -12,6 +12,7 @@ from app.services.action_logger import ActionLogger
 from app.services.command_handlers import CommandHandlers
 from app.services.loop_guard import LoopGuard
 from app.services.memory import MemoryService
+from app.services.write_flow_handler import WriteFlowHandler
 from app.services.workflow_engine import WorkflowEngine
 
 
@@ -25,6 +26,7 @@ class TelegramOrchestrator:
         self.action_logger = ActionLogger()
         self.loop_guard = LoopGuard()
         self.commands = CommandHandlers()
+        self.write_flow = WriteFlowHandler()
 
     async def handle_update(self, update: TelegramUpdate) -> None:
         message = update.message
@@ -82,6 +84,13 @@ class TelegramOrchestrator:
             await self.action_logger.log("command_response", chat.id, user.id, {"text": incoming_text, "reply": command_reply})
             if decision.allow_reply:
                 await self.telegram.send_message(chat.id, command_reply)
+            return
+
+        write_reply = await self.write_flow.handle(incoming_text, chat.id, user.id)
+        if write_reply is not None:
+            await self.action_logger.log("write_flow_response", chat.id, user.id, {"text": incoming_text, "reply": write_reply})
+            if decision.allow_reply:
+                await self.telegram.send_message(chat.id, write_reply)
             return
 
         await self.action_logger.log("incoming_message", chat.id, user.id, {"text": incoming_text, "update_id": update.update_id})

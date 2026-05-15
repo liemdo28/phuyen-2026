@@ -847,7 +847,12 @@ function getBotToken(forceRefresh) {
 
 function doPost(e) {
   try {
-    const update = JSON.parse(e.postData.contents);
+    const body = JSON.parse(e.postData.contents);
+    if (body && typeof body.action === 'string' && body.action.indexOf('write_') === 0) {
+      return apiHandleWriteAction_(body);
+    }
+
+    const update = body;
     logTelegramEvent_('incoming_update', update);
     if (!update || !update.message) {
       return ContentService.createTextOutput('OK');
@@ -1967,4 +1972,152 @@ function apiMembers_() {
     });
   });
   return { ok: true, count: items.length, items: items };
+}
+
+function apiHandleWriteAction_(body) {
+  var expected = PropertiesService.getScriptProperties().getProperty('api_shared_secret');
+  if (!expected || body.token !== expected) {
+    return apiJson_({ ok: false, error: 'unauthorized' });
+  }
+  var action = body.action || '';
+  var data = body.data || {};
+  try {
+    var result;
+    switch (action) {
+      case 'write_expense': result = apiWriteExpense_(data); break;
+      case 'write_packing': result = apiWritePacking_(data); break;
+      case 'write_contribution': result = apiWriteContribution_(data); break;
+      case 'write_restaurant': result = apiWriteRestaurant_(data); break;
+      default:
+        result = { ok: false, error: 'unknown_write_action', action: action };
+    }
+    return apiJson_(result);
+  } catch (err) {
+    return apiJson_({ ok: false, error: 'exception', message: String(err) });
+  }
+}
+
+function apiWriteExpense_(data) {
+  var s = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(API_SHEETS.chiTieu);
+  if (!s) return { ok: false, error: 'sheet_not_found' };
+
+  var lastRow = s.getLastRow();
+  var targetRow = lastRow + 1;
+  if (targetRow < 2) targetRow = 2;
+
+  var ngay = data.ngay ? new Date(data.ngay) : new Date();
+  var ghiChu = String(data.ghi_chu || '');
+  var gc1 = ghiChu, gc2 = '';
+  if (ghiChu.length > 200) {
+    gc1 = ghiChu.substring(0, 200);
+    gc2 = ghiChu.substring(200);
+  }
+
+  s.getRange(targetRow, 2, 1, 7).setValues([[
+    ngay,
+    String(data.khoan_chi || 'Khoản chi'),
+    String(data.danh_muc || '📦 Khác'),
+    Number(data.so_tien) || 0,
+    String(data.nhom || ''),
+    gc1,
+    gc2,
+  ]]);
+  s.getRange(targetRow, 2).setNumberFormat('dd/mm/yyyy');
+  s.getRange(targetRow, 5).setNumberFormat('#,##0');
+
+  return {
+    ok: true,
+    written: {
+      row: targetRow,
+      khoan_chi: data.khoan_chi,
+      so_tien: Number(data.so_tien) || 0,
+      danh_muc: data.danh_muc,
+    },
+  };
+}
+
+function apiWritePacking_(data) {
+  var s = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(API_SHEETS.phaiDem);
+  if (!s || s.getLastRow() < 4) return { ok: false, error: 'sheet_not_found' };
+
+  var values = s.getRange(4, 1, s.getLastRow() - 3, 6).getValues();
+  var query = apiNormalizeText_(String(data.ten_do || ''));
+  if (!query) return { ok: false, error: 'empty_item_name' };
+
+  var matchedRow = -1, matchedName = '';
+  for (var i = 0; i < values.length; i++) {
+    var name = apiNormalizeText_(String(values[i][1] || ''));
+    if (!name) continue;
+    if (name.indexOf(query) !== -1 || query.indexOf(name) !== -1) {
+      matchedRow = 4 + i;
+      matchedName = String(values[i][1]);
+      break;
+    }
+  }
+  if (matchedRow === -1) {
+    return { ok: false, error: 'item_not_found', query: data.ten_do };
+  }
+  s.getRange(matchedRow, 5).setValue(true);
+  return { ok: true, written: { row: matchedRow, item: matchedName, packed: true } };
+}
+
+function apiWriteContribution_(data) {
+  var s = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(API_SHEETS.gopTien);
+  if (!s) return { ok: false, error: 'sheet_not_found' };
+
+  var nhom = String(data.nhom || '').trim();
+  if (!nhom) return { ok: false, error: 'missing_group' };
+
+  var values = s.getRange('A4:D6').getValues();
+  var targetRow = -1;
+  for (var i = 0; i < values.length; i++) {
+    if (String(values[i][0]).trim() === nhom) { targetRow = 4 + i; break; }
+  }
+  if (targetRow === -1) return { ok: false, error: 'group_not_found', group: nhom };
+
+  if (data.so_tien !== undefined && data.so_tien !== null && data.so_tien !== '') {
+    s.getRange(targetRow, 2).setValue(Number(data.so_tien) || 0);
+  }
+  var trangThai = String(data.trang_thai || 'Đã chuyển').trim();
+  s.getRange(targetRow, 3).setValue(trangThai);
+  s.getRange(targetRow, 3).setBackground(trangThai === 'Đã chuyển' ? '#c6f6d5' : '#fed7d7');
+
+  return {
+    ok: true,
+    written: { row: targetRow, group: nhom, so_tien: data.so_tien, trang_thai: trangThai },
+  };
+}
+
+function apiWriteRestaurant_(data) {
+  var s = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(API_SHEETS.quanAn);
+  if (!s) return { ok: false, error: 'sheet_not_found' };
+
+  var lastRow = s.getLastRow();
+  var targetRow = lastRow + 1;
+  if (targetRow < 3) targetRow = 3;
+  var stt = targetRow - 2;
+
+  s.getRange(targetRow, 1, 1, 9).setValues([[
+    stt,
+    String(data.ten_quan || 'Quán mới'),
+    String(data.khu_vuc || ''),
+    String(data.loai || ''),
+    Number(data.gia_k) || 0,
+    data.lat ? Number(data.lat) : '',
+    data.lon ? Number(data.lon) : '',
+    '',
+    String(data.ghi_chu || ''),
+  ]]);
+  s.getRange(targetRow, 5).setNumberFormat('#,##0 "k"');
+  if (data.lat && data.lon) s.getRange(targetRow, 6, 1, 2).setNumberFormat('0.0000');
+
+  return { ok: true, written: { row: targetRow, ten_quan: data.ten_quan } };
+}
+
+function apiNormalizeText_(text) {
+  if (!text) return '';
+  return text.toString().toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/\s+/g, ' ').trim();
 }
