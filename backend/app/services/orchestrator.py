@@ -7,6 +7,7 @@ from app.adapters.google_sheets import GoogleSheetsAdapter
 from app.adapters.llm import LLMAdapter
 from app.adapters.media import MediaAdapter
 from app.adapters.telegram import TelegramAdapter
+from app.orchestration.travel_operating_system import TravelOperatingSystem
 from app.schemas.assistant import AssistantIntent, AssistantResponse
 from app.schemas.telegram import TelegramUpdate
 from app.services.action_logger import ActionLogger
@@ -36,6 +37,8 @@ class TelegramOrchestrator:
         self.write_flow = WriteFlowHandler()
         self.companion = TravelCompanionEngine()
         self.trip_context = TripContextService()
+        # Phase 5: Autonomous Travel Operating System
+        self.travel_os = TravelOperatingSystem()
 
     async def handle_update(self, update: TelegramUpdate) -> None:
         message = update.message
@@ -134,6 +137,11 @@ class TelegramOrchestrator:
             intent_result.intent.extracted_fields = resolve_entity_reference(context, intent_result.intent.extracted_fields)
             companion_state = self.companion.assess(context, incoming_text, intent=intent_result.intent)
             await self.memory.update_preferences(context, self._build_preference_updates(companion_state))
+
+            # Phase 5: Autonomous Travel Operating System
+            travel_os_state = self.travel_os.assess(context, incoming_text, companion_state, intent_result.intent)
+            await self.memory.update_preferences(context, travel_os_state.preference_updates)
+
             workflow_reasoning = build_workflow_reasoning(intent_result.intent)
             await self.action_logger.log("intent_detected", chat.id, user.id, intent_result.intent.model_dump())
             await self.action_logger.log(
@@ -149,16 +157,33 @@ class TelegramOrchestrator:
                         "signals": companion_state.signals,
                         "proactive_hints": companion_state.proactive_hints,
                     },
+                    "travel_os": {
+                        "posture": travel_os_state.recommendation_posture,
+                        "profile": travel_os_state.profile.primary_style,
+                        "rest_pressure": travel_os_state.energy.rest_pressure,
+                        "simplify_pressure": travel_os_state.energy.simplify_pressure,
+                        "future_stress": travel_os_state.prediction.future_stress,
+                        "traffic_risk": travel_os_state.prediction.traffic_issue_risk,
+                        "weather_risk": travel_os_state.prediction.weather_interruption_risk,
+                        "overcrowding_risk": travel_os_state.prediction.overcrowding_risk,
+                        "local_insights": travel_os_state.local.insights,
+                        "rhythm": travel_os_state.rhythm.pacing_mode,
+                    },
                 },
             )
 
             if _is_companion_mode(intent_result.intent):
                 # Travel/chat/general → OpenAI with trip context + emotional state
                 response = await self._companion_reply(incoming_text, context, companion_state)
+                # Phase 5: enhance with Travel OS
+                response.text = self.companion.adapt_reply(response.text, companion_state, intent=intent_result.intent)
+                response.text = self.travel_os.enhance_reply(response.text, travel_os_state, intent=intent_result.intent)
             else:
                 # Structured action (expense/task/etc.) → sheets workflow
                 response = await self.workflow.execute(intent_result.intent, companion_state=companion_state)
                 response.text = self.companion.adapt_reply(response.text, companion_state, intent=intent_result.intent)
+                # Phase 5: Travel OS also enhances structured responses for travel-related queries
+                response.text = self.travel_os.enhance_reply(response.text, travel_os_state, intent=intent_result.intent)
 
             if response.memory_updates:
                 entity_type = intent_result.intent.domain or "general"
