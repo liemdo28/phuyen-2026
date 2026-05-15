@@ -3,12 +3,14 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 from urllib.parse import quote
+import unicodedata
 
 # ── Local Phú Yên place database ─────────────────────────────────────────────
 # When Google Maps API key is available: replace with live Place Search results.
 # Format: name → {lat, lon, type, area, price_k, hours, note, child_safe}
 
 PLACES: list[dict] = [
+    {"name": "Sun Village Resort - Phú Yên", "lat": 13.0955, "lon": 109.3028, "type": "hotel", "area": "Tuy Hòa", "price_k": 0, "hours": "00:00-23:59", "note": "Điểm lưu trú của chuyến đi", "child_safe": True, "aliases": ["sun village", "sun village resort", "resort sun", "di resort", "khach san sun village", "hotel sun village", "resort"]},
     {"name": "Quán Bún Cá Ngừ Bà Hai", "lat": 13.0982, "lon": 109.2970, "type": "food", "area": "Tuy Hòa", "price_k": 40, "hours": "06:00-14:00", "note": "Cá ngừ đại dương tươi, locals hay ăn sáng", "child_safe": True},
     {"name": "Bánh Căn Ngọc Lan", "lat": 13.0962, "lon": 109.2958, "type": "food", "area": "Tuy Hòa", "price_k": 30, "hours": "06:00-09:00", "note": "Sáng sớm thôi, đông nhất 7h–8h", "child_safe": True},
     {"name": "Bún Sứa Đặc Sản", "lat": 13.0935, "lon": 109.2962, "type": "food", "area": "Tuy Hòa", "price_k": 35, "hours": "06:00-14:00", "note": "Phải thử ở Phú Yên", "child_safe": True},
@@ -59,9 +61,15 @@ class PlaceInfo:
 
 def find_place(name: str) -> PlaceInfo | None:
     """Look up a place by name (case-insensitive, partial match)."""
-    name_lower = name.lower().strip()
+    name_lower = _normalize(name)
     for p in PLACES:
-        if name_lower in p["name"].lower() or p["name"].lower() in name_lower:
+        place_name = _normalize(p["name"])
+        aliases = [_normalize(alias) for alias in p.get("aliases", [])]
+        if (
+            name_lower in place_name
+            or place_name in name_lower
+            or any(name_lower in alias or alias in name_lower for alias in aliases)
+        ):
             return _enrich(p, TUY_HOA_CENTER)
     return None
 
@@ -206,3 +214,8 @@ def _open_status_label(place: PlaceInfo) -> str:
     if place.closing_soon:
         return "🟡 Sắp đóng"
     return ""
+
+
+def _normalize(text: str) -> str:
+    nfkd = unicodedata.normalize("NFKD", text.lower().strip())
+    return "".join(c for c in nfkd if not unicodedata.combining(c)).replace("đ", "d")

@@ -590,13 +590,16 @@ class TelegramOrchestrator:
         return ""
 
     def _resolve_recent_place(self, context, current_text: str):
-        candidates = [current_text]
+        candidates = [current_text, self._clean_maps_query(current_text)]
         conversation = getattr(context, "conversation", []) or []
         for turn in reversed(conversation[-6:]):
             turn_text = getattr(turn, "text", "")
             if isinstance(turn_text, str) and turn_text.strip():
                 candidates.append(turn_text)
+                candidates.append(self._clean_maps_query(turn_text))
         for candidate in candidates:
+            if not candidate:
+                continue
             try:
                 place = find_place(candidate)
             except Exception:
@@ -604,6 +607,12 @@ class TelegramOrchestrator:
             if place is not None:
                 return place
         return None
+
+    def _clean_maps_query(self, text: str) -> str:
+        normalized = _strip_diacritics(text)
+        for trigger in _MAPS_TRIGGERS:
+            normalized = normalized.replace(trigger, " ")
+        return " ".join(normalized.split())
 
     def _neutral_civilization_defaults(
         self, companion_state

@@ -50,3 +50,18 @@ def test_maps_request_uses_recent_place_context() -> None:
     assert response is not None
     assert response.reply_markup is not None
     assert "Bãi Xép" in response.text
+
+
+def test_maps_request_resolves_resort_alias_directly() -> None:
+    orchestrator = object.__new__(TelegramOrchestrator)
+    context = UserContext(chat_id=1, user_id=1)
+
+    response = TelegramOrchestrator._direct_link_response(
+        orchestrator,
+        "mở maps đi resort sun",
+        context,
+    )
+
+    assert response is not None
+    assert response.reply_markup is not None
+    assert "Sun Village Resort" in response.text
