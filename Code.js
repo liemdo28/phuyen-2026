@@ -1345,11 +1345,13 @@ function markPacked(cfg, chatId, itemNames) {
 // ════════════════════════════════════════════════════════
 function sendDailyReport(cfg, chatId) {
   const s = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Chi Tiêu');
-  if (!s || s.getLastRow() < 2) { sendTG(cfg.token, chatId, 'Chưa có dữ liệu chi tiêu.'); return; }
+  if (!s) { sendTG(cfg.token, chatId, 'Chưa có dữ liệu chi tiêu.'); return; }
+  const lastDataRow = apiGetExpenseLastDataRow_(s);
+  if (lastDataRow < 2) { sendTG(cfg.token, chatId, 'Chưa có dữ liệu chi tiêu.'); return; }
 
   const today    = Utilities.formatDate(new Date(), 'Asia/Ho_Chi_Minh', 'yyyyMMdd');
   const todayStr = Utilities.formatDate(new Date(), 'Asia/Ho_Chi_Minh', 'dd/MM/yyyy');
-  const data     = s.getRange(2, 2, s.getLastRow() - 1, 5).getValues()
+  const data     = s.getRange(2, 2, lastDataRow - 1, 5).getValues()
     .filter(r => r[0] instanceof Date && r[1]);
   const todayData = data.filter(r =>
     Utilities.formatDate(r[0], 'Asia/Ho_Chi_Minh', 'yyyyMMdd') === today
@@ -1516,9 +1518,11 @@ function sendEveningReminder() {
 
 function getTodayStats() {
   const s = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Chi Tiêu');
-  if (!s || s.getLastRow() < 2) return { count: 0, total: 0 };
+  if (!s) return { count: 0, total: 0 };
+  const lastDataRow = apiGetExpenseLastDataRow_(s);
+  if (lastDataRow < 2) return { count: 0, total: 0 };
   const today = Utilities.formatDate(new Date(), 'Asia/Ho_Chi_Minh', 'yyyyMMdd');
-  const data  = s.getRange(2, 2, s.getLastRow() - 1, 4).getValues()
+  const data  = s.getRange(2, 2, lastDataRow - 1, 4).getValues()
     .filter(r => r[0] instanceof Date && r[2]);
   let count = 0, total = 0;
   data.forEach(r => {
@@ -1590,8 +1594,10 @@ function writeExpense(exp) {
 
 function sendRecentExpenses(cfg, chatId) {
   const s = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Chi Tiêu');
-  if (!s || s.getLastRow()<2) { sendTG(cfg.token, chatId, 'Chưa có khoản chi nào.'); return; }
-  const data = s.getRange(2,2,s.getLastRow()-1,5).getValues().filter(r=>r[1]).slice(-5);
+  if (!s) { sendTG(cfg.token, chatId, 'Chưa có khoản chi nào.'); return; }
+  const lastDataRow = apiGetExpenseLastDataRow_(s);
+  if (lastDataRow < 2) { sendTG(cfg.token, chatId, 'Chưa có khoản chi nào.'); return; }
+  const data = s.getRange(2,2,lastDataRow-1,5).getValues().filter(r=>r[1]).slice(-5);
   const lines = data.map(r => {
     const d = r[0] ? Utilities.formatDate(new Date(r[0]),'Asia/Ho_Chi_Minh','dd/MM') : '—';
     return `${d}  ${r[1]}  ${fmtMoney(r[3])}  <i>${r[4]}</i>`;
@@ -1601,8 +1607,10 @@ function sendRecentExpenses(cfg, chatId) {
 
 function sendSummary(cfg, chatId) {
   const s = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Chi Tiêu');
-  if (!s || s.getLastRow()<2) { sendTG(cfg.token, chatId, 'Chưa có dữ liệu.'); return; }
-  const data   = s.getRange(2,5,s.getLastRow()-1,2).getValues().filter(r=>r[0]&&r[1]);
+  if (!s) { sendTG(cfg.token, chatId, 'Chưa có dữ liệu.'); return; }
+  const lastDataRow = apiGetExpenseLastDataRow_(s);
+  if (lastDataRow < 2) { sendTG(cfg.token, chatId, 'Chưa có dữ liệu.'); return; }
+  const data   = s.getRange(2,5,lastDataRow-1,2).getValues().filter(r=>r[0]&&r[1]);
   const totals = {};
   data.forEach(([amt,grp]) => { totals[grp]=(totals[grp]||0)+amt; });
   const total  = Object.values(totals).reduce((a,b)=>a+b,0);
@@ -1816,10 +1824,24 @@ function apiBuildWriteDataFromParams_(params) {
   return data;
 }
 
+function apiGetExpenseLastDataRow_(sheet) {
+  var startRow = 2;
+  var maxRows = Math.max(sheet.getMaxRows() - startRow + 1, 1);
+  var values = sheet.getRange(startRow, 3, maxRows, 1).getDisplayValues();
+  for (var i = values.length - 1; i >= 0; i--) {
+    if (String(values[i][0] || '').trim()) {
+      return startRow + i;
+    }
+  }
+  return startRow - 1;
+}
+
 function apiReadExpenses_() {
   var s = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(API_SHEETS.chiTieu);
-  if (!s || s.getLastRow() < 2) return [];
-  var values = s.getRange(2, 1, s.getLastRow() - 1, 8).getValues();
+  if (!s) return [];
+  var lastDataRow = apiGetExpenseLastDataRow_(s);
+  if (lastDataRow < 2) return [];
+  var values = s.getRange(2, 1, lastDataRow - 1, 8).getValues();
   var rows = [];
   values.forEach(function (r) {
     var khoanChi = String(r[2] || '').trim();
@@ -2062,14 +2084,8 @@ function apiWriteExpense_(data) {
 
 function apiFindFirstEmptyExpenseRow_(sheet) {
   var startRow = 2;
-  var maxRows = Math.max(sheet.getMaxRows() - startRow + 1, 1);
-  var values = sheet.getRange(startRow, 3, maxRows, 1).getDisplayValues();
-  for (var i = 0; i < values.length; i++) {
-    if (!String(values[i][0] || '').trim()) {
-      return startRow + i;
-    }
-  }
-  return sheet.getLastRow() + 1;
+  var lastDataRow = apiGetExpenseLastDataRow_(sheet);
+  return lastDataRow < startRow ? startRow : lastDataRow + 1;
 }
 
 function apiWritePacking_(data) {
