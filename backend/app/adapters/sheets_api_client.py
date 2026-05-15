@@ -38,24 +38,37 @@ class SheetsApiClient:
             raise SheetsApiError(f"Apps Script báo lỗi: {data.get('error', 'unknown')}")
         return data
 
+    def _parse_json_response(self, response: httpx.Response, context: str) -> dict:
+        try:
+            data = response.json()
+        except ValueError as exc:
+            body_preview = (response.text or "")[:200]
+            raise SheetsApiError(
+                f"{context} trả về không phải JSON: {exc}. HTTP {response.status_code}. Body: {body_preview}"
+            ) from exc
+
+        if not data.get("ok"):
+            raise SheetsApiError(f"Apps Script báo lỗi: {data.get('error', 'unknown')}")
+        return data
+
     async def _call_post(self, action: str, data: dict) -> dict:
         if not self.configured:
             raise SheetsApiError("Chưa cấu hình SHEETS_WEBAPP_URL / SHEETS_API_SECRET trên môi trường deploy.")
 
         payload = {"token": self.secret, "action": action, "data": data}
         try:
-            async with httpx.AsyncClient(timeout=self._timeout, follow_redirects=True) as client:
+            async with httpx.AsyncClient(timeout=self._timeout, follow_redirects=False) as client:
                 response = await client.post(self.base_url, json=payload)
+
+                if response.status_code in {301, 302, 303, 307, 308} and response.headers.get("location"):
+                    redirect_url = response.headers["location"]
+                    response = await client.post(redirect_url, json=payload)
+
                 response.raise_for_status()
-                result = response.json()
         except httpx.HTTPError as exc:
             raise SheetsApiError(f"Không gọi được Apps Script (POST): {exc}") from exc
-        except ValueError as exc:
-            raise SheetsApiError(f"Apps Script trả về không phải JSON: {exc}") from exc
 
-        if not result.get("ok"):
-            raise SheetsApiError(f"Apps Script báo lỗi: {result.get('error', 'unknown')}")
-        return result
+        return self._parse_json_response(response, "Apps Script POST")
 
     async def ping(self) -> bool:
         data = await self._call("ping")
