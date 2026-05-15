@@ -1775,6 +1775,10 @@ function doGet(e) {
       case 'expenses_by_category': data = apiExpensesByCategory_(); break;
       case 'expenses_by_day': data = apiExpensesByDay_(); break;
       case 'members': data = apiMembers_(); break;
+      case 'write_expense': data = apiWriteExpense_(apiBuildWriteDataFromParams_(params)); break;
+      case 'write_packing': data = apiWritePacking_(apiBuildWriteDataFromParams_(params)); break;
+      case 'write_contribution': data = apiWriteContribution_(apiBuildWriteDataFromParams_(params)); break;
+      case 'write_restaurant': data = apiWriteRestaurant_(apiBuildWriteDataFromParams_(params)); break;
       default:
         data = { ok: false, error: 'unknown_action', action: action };
     }
@@ -1788,6 +1792,15 @@ function apiJson_(obj) {
   return ContentService
     .createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+function apiBuildWriteDataFromParams_(params) {
+  var data = {};
+  Object.keys(params || {}).forEach(function(key) {
+    if (key === 'action' || key === 'token') return;
+    data[key] = params[key];
+  });
+  return data;
 }
 
 function apiReadExpenses_() {
