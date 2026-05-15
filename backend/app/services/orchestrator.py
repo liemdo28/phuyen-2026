@@ -9,7 +9,10 @@ from app.adapters.google_sheets import GoogleSheetsAdapter
 from app.adapters.llm import LLMAdapter
 from app.adapters.media import MediaAdapter
 from app.adapters.telegram import TelegramAdapter
+from app.ethics.calm_technology import CalmTechnologyPolicy
+from app.orchestration.travel_brain import TravelBrain
 from app.orchestration.travel_operating_system import TravelOperatingSystem
+from app.recovery.recovery_engine import RecoveryEngine
 from app.schemas.assistant import AssistantIntent, AssistantResponse
 from app.schemas.telegram import TelegramUpdate
 from app.services.action_logger import ActionLogger
@@ -22,6 +25,7 @@ from app.services.trip_context import TripContextService
 from app.services.write_flow_handler import WriteFlowHandler
 from app.nlp.conversation_merger import ConversationMerger, MergedIntent
 from app.services.workflow_engine import WorkflowEngine
+from app.society.agent_society import TravelAgentSociety
 
 # Domains routed to sheets workflow (not companion AI)
 _STRUCTURED_DOMAINS = {"expense", "task", "inventory", "revenue", "crm"}
@@ -43,6 +47,10 @@ class TelegramOrchestrator:
         self.trip_context = TripContextService()
         # Phase 5: Autonomous Travel Operating System
         self.travel_os = TravelOperatingSystem()
+        self.travel_brain = TravelBrain()
+        self.calm_policy = CalmTechnologyPolicy()
+        self.recovery = RecoveryEngine()
+        self.agent_society = TravelAgentSociety()
         # Phase: Human Chaos NLP — multi-message conversation merger
         self.merger = ConversationMerger()
 
@@ -154,7 +162,26 @@ class TelegramOrchestrator:
 
             # Phase 5: Autonomous Travel Operating System
             travel_os_state = self.travel_os.assess(context, incoming_text, companion_state, intent_result.intent)
+            travel_brain_state = await self.travel_brain.assess(context, incoming_text, intent_result.intent)
+            calm_decision = self.calm_policy.evaluate(
+                future_stress=travel_os_state.prediction.future_stress,
+                safety_risk=travel_os_state.safety.risk_level,
+                burnout_risk=travel_brain_state.emotional.burnout_risk,
+                option_count=travel_brain_state.option_count,
+                user_initiated=True,
+                attention_noise_risk=travel_brain_state.attention_protection.noise_risk,
+                city_overload_risk=travel_brain_state.city_flow.stress_propagation_risk,
+            )
+            recovery_plan = self.recovery.build_plan(
+                travel_brain_state.emotional,
+                travel_os_state,
+                travel_brain_state.city_flow,
+                travel_brain_state.emotional_zone,
+                travel_brain_state.collective_rhythm,
+            )
+            society_decision = self.agent_society.coordinate(travel_brain_state, calm_decision, recovery_plan)
             await self.memory.update_preferences(context, travel_os_state.preference_updates)
+            await self.memory.update_preferences(context, travel_brain_state.preference_updates)
 
             workflow_reasoning = build_workflow_reasoning(intent_result.intent)
             await self.action_logger.log("intent_detected", chat.id, user.id, intent_result.intent.model_dump())
@@ -183,6 +210,19 @@ class TelegramOrchestrator:
                         "local_insights": travel_os_state.local.insights,
                         "rhythm": travel_os_state.rhythm.pacing_mode,
                     },
+                    "travel_brain": {
+                        "option_count": travel_brain_state.option_count,
+                        "city_stress": travel_brain_state.city_flow.stress_propagation_risk,
+                        "attention_noise": travel_brain_state.attention_protection.noise_risk,
+                        "emotional_zone": travel_brain_state.emotional_zone.name,
+                        "planetary_calmness": travel_brain_state.planetary.calmness_score,
+                    },
+                    "calm_policy": {
+                        "max_option_count": calm_decision.max_option_count,
+                        "allowed_surface": calm_decision.allowed_surface,
+                        "notification_budget": calm_decision.notification_budget,
+                        "should_batch": calm_decision.should_batch,
+                    },
                 },
             )
 
@@ -198,6 +238,15 @@ class TelegramOrchestrator:
                 response.text = self.companion.adapt_reply(response.text, companion_state, intent=intent_result.intent)
                 # Phase 5: Travel OS also enhances structured responses for travel-related queries
                 response.text = self.travel_os.enhance_reply(response.text, travel_os_state, intent=intent_result.intent)
+
+            response.text = self._compose_live_reply(
+                response.text,
+                intent_result.intent,
+                travel_brain_state,
+                calm_decision,
+                recovery_plan,
+                society_decision,
+            )
 
             if response.memory_updates:
                 entity_type = intent_result.intent.domain or "general"
@@ -289,6 +338,87 @@ class TelegramOrchestrator:
         if "transport_context" in state.signals:
             updates["transport_sensitive"] = True
         return updates
+
+    def _compose_live_reply(
+        self,
+        text: str,
+        intent: AssistantIntent,
+        brain,
+        calm,
+        recovery,
+        society,
+    ) -> str:
+        limited = self._truncate_option_lines(text, calm.max_option_count)
+        prefix = self._calm_prefix(brain, calm, recovery)
+        guidance = self._select_live_guidance(intent, brain, calm, recovery, society)
+
+        parts: list[str] = []
+        if prefix:
+            parts.append(prefix)
+        parts.append(limited.strip())
+        if guidance:
+            parts.append("Giữ nhịp nhẹ:\n" + "\n".join(f"• {line}" for line in guidance))
+        return "\n\n".join(part for part in parts if part).strip()
+
+    def _calm_prefix(self, brain, calm, recovery) -> str:
+        if brain.city_flow.stress_propagation_risk >= 0.55 or brain.attention_protection.noise_risk >= 0.6:
+            return "Mình chốt gọn để đỡ quá tải nhé."
+        if recovery.protect_energy:
+            return "Mình ưu tiên nhịp nhẹ và dễ theo trước nhé."
+        if calm.max_option_count <= 2:
+            return "Mình gom lại ngắn gọn để bạn dễ chốt hơn nhé."
+        if calm.should_batch:
+            return "Mình gom lại ngắn gọn để bạn đỡ phải xử lý nhiều cùng lúc."
+        return ""
+
+    def _select_live_guidance(self, intent, brain, calm, recovery, society) -> list[str]:
+        if intent.domain not in {"travel", "general"} and not recovery.protect_energy:
+            return []
+
+        limit = 1 if calm.max_option_count <= 2 else 2
+        guidance: list[str] = []
+        if recovery.actions:
+            guidance.append(recovery.actions[0])
+        if brain.city_flow.stress_propagation_risk >= 0.55:
+            guidance.append("Nhịp di chuyển quanh bạn đang khá áp lực, nên mình ưu tiên chặng ngắn và ít đổi chỗ.")
+        guidance.extend(society.top_messages(limit=limit))
+
+        deduped: list[str] = []
+        for item in guidance:
+            cleaned = item.strip()
+            if cleaned and cleaned not in deduped:
+                deduped.append(cleaned)
+        return deduped[:limit]
+
+    def _truncate_option_lines(self, text: str, max_option_count: int) -> str:
+        if max_option_count >= 4:
+            return text
+        lines = text.splitlines()
+        kept: list[str] = []
+        option_count = 0
+        truncated = False
+        for line in lines:
+            stripped = line.strip()
+            if self._is_option_line(stripped):
+                if option_count < max_option_count:
+                    kept.append(line)
+                else:
+                    truncated = True
+                option_count += 1
+                continue
+            kept.append(line)
+        if truncated and max_option_count <= 2:
+            kept.append("• Nếu cần mình mở thêm lựa chọn sau.")
+        return "\n".join(kept).strip()
+
+    def _is_option_line(self, line: str) -> bool:
+        if not line:
+            return False
+        if line.startswith(("•", "-", "*")):
+            return True
+        if len(line) > 2 and line[0].isdigit() and line[1] in {".", ")"}:
+            return True
+        return False
 
 
 def _is_companion_mode(intent: AssistantIntent) -> bool:
