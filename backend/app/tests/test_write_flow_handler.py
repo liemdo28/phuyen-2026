@@ -63,3 +63,58 @@ def test_write_flow_non_write_returns_none(monkeypatch) -> None:
 
     result = asyncio.run(handler.handle("hôm nay trời đẹp", 1, 2))
     assert result is None
+
+
+def test_write_flow_clarification_then_confirm(monkeypatch) -> None:
+    async def fake_parse(text: str):
+        from app.services.write_llm_parser import ParsedWrite
+        if text == "500k":
+            return ParsedWrite(
+                write_intent="expense",
+                needs_clarification=True,
+                clarification_question="Bạn chi vào việc gì với 500k?",
+            )
+        if text == "[CÂU GỐC]: 500k\n[BỔ SUNG]: ăn trưa":
+            return ParsedWrite(
+                write_intent="expense",
+                items=[{"khoan_chi": "Ăn trưa", "so_tien": 500000, "danh_muc": "🍜 Ăn uống"}],
+            )
+        raise AssertionError(f"unexpected parse input: {text}")
+
+    monkeypatch.setattr("app.services.write_flow_handler.parse_write_message", fake_parse)
+    handler = WriteFlowHandler(sheets=FakeWriteSheets())
+
+    clarify = asyncio.run(handler.handle("500k", 1, 2))
+    preview = asyncio.run(handler.handle("ăn trưa", 1, 2))
+    confirmed = asyncio.run(handler.handle("có", 1, 2))
+
+    assert "Bạn chi vào việc gì với 500k?" in clarify
+    assert "Ăn trưa" in preview
+    assert "✅ Đã ghi: Ăn trưa" in confirmed
+
+
+def test_write_flow_second_clarification_fails_cleanly(monkeypatch) -> None:
+    async def fake_parse(text: str):
+        from app.services.write_llm_parser import ParsedWrite
+        if text == "ăn tối":
+            return ParsedWrite(
+                write_intent="expense",
+                needs_clarification=True,
+                clarification_question="Số tiền là bao nhiêu?",
+            )
+        if text == "[CÂU GỐC]: ăn tối\n[BỔ SUNG]: không nhớ":
+            return ParsedWrite(
+                write_intent="expense",
+                needs_clarification=True,
+                clarification_question="Bạn ghi rõ hơn giúp mình nhé.",
+            )
+        raise AssertionError(f"unexpected parse input: {text}")
+
+    monkeypatch.setattr("app.services.write_flow_handler.parse_write_message", fake_parse)
+    handler = WriteFlowHandler(sheets=FakeWriteSheets())
+
+    clarify = asyncio.run(handler.handle("ăn tối", 1, 2))
+    failed = asyncio.run(handler.handle("không nhớ", 1, 2))
+
+    assert "Số tiền là bao nhiêu?" in clarify
+    assert "Mình vẫn chưa parse được" in failed

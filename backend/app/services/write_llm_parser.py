@@ -26,14 +26,62 @@ Có 4 loại hành động ghi (write_intent):
 3. "contribution" — cập nhật một nhóm đã góp/chuyển tiền
 4. "restaurant" — thêm một quán ăn mới vào danh sách
 
-Với expense mỗi item gồm: khoan_chi, so_tien, danh_muc, ngay, nhom, ghi_chu.
-Với packing mỗi item gồm: ten_do.
-Với contribution mỗi item gồm: nhom, so_tien, trang_thai.
-Với restaurant mỗi item gồm: ten_quan, khu_vuc, loai, gia_k, ghi_chu.
+═══ QUAN TRỌNG — TRƯỜNG TỐI THIỂU ═══
+Mỗi loại chỉ cần các trường TỐI THIỂU sau là ĐỦ để ghi, KHÔNG được đòi thêm:
+  - expense:      khoan_chi + so_tien   (ngày/nhóm/danh mục TÙY CHỌN, đoán được thì điền, không thì để trống/mặc định)
+  - packing:      ten_do
+  - contribution: nhom
+  - restaurant:   ten_quan
 
-Nếu không đủ thông tin tối thiểu, đặt needs_clarification=true và viết clarification_question.
-Nếu không phải hành động ghi, trả write_intent="unknown".
-Chỉ trả JSON.
+CHỈ đặt needs_clarification=true khi THỰC SỰ THIẾU trường tối thiểu.
+VÍ DỤ:
+  ✅ "600k ăn tối"          → đủ (khoan_chi="Ăn tối", so_tien=600000). KHÔNG hỏi lại ngày/nhóm.
+  ✅ "500k"                 → THIẾU khoan_chi → hỏi lại
+  ✅ "ăn tối"               → THIẾU so_tien → hỏi lại
+  ✅ "đã đem ô"             → đủ (ten_do="Ô"). KHÔNG hỏi gì thêm.
+  ✅ "Nhóm CM đã chuyển"    → đủ (nhom="Nhóm CM"). KHÔNG đòi số tiền.
+
+═══ CHI TIẾT TỪNG LOẠI ═══
+
+[expense] mỗi item gồm:
+  - khoan_chi: tên khoản chi NGẮN GỌN (vd "Sun Village Resort", "Ăn tối", "Đổ xăng")
+  - so_tien: số nguyên VNĐ
+  - danh_muc: chọn ĐÚNG 1 trong: "🏨 Lưu trú", "🍜 Ăn uống", "🚗 Di chuyển", "⛽ Xăng dầu", "🎡 Vui chơi", "🛒 Mua sắm", "💊 Y tế", "📦 Khác". Nếu không chắc → "📦 Khác".
+  - ngay: ISO yyyy-MM-dd nếu tin có nhắc ngày, KHÔNG có thì để "" (KHÔNG hỏi user).
+  - nhom: "Nhóm LV" / "Nhóm LH" / "Nhóm CM" nếu tin có nhắc, KHÔNG có thì để "" (KHÔNG hỏi).
+  - ghi_chu: MỌI chi tiết phụ — URL, mô tả phòng, số lượng, điều kiện... gộp hết vào đây
+  Nếu tin có nhiều khoản chi (vd "1.5tr phòng, 200k cafe"), tách thành nhiều item.
+
+[packing] mỗi item gồm:
+  - ten_do: tên món đồ (vd "Kem chống nắng", "Thuốc hạ sốt", "Ô")
+  Tách mỗi món thành 1 item. Khớp gần đúng với tên trong danh sách là được.
+
+[contribution] mỗi item gồm:
+  - nhom: "Nhóm LV" / "Nhóm LH" / "Nhóm CM"
+  - so_tien: số nguyên VNĐ (TÙY CHỌN — nếu không có để 0)
+  - trang_thai: "Đã chuyển" hoặc "Chưa góp" (mặc định "Đã chuyển" nếu tin có chữ "chuyển/góp")
+
+[restaurant] mỗi item gồm:
+  - ten_quan: tên quán
+  - khu_vuc: TÙY CHỌN
+  - loai: TÙY CHỌN
+  - gia_k: TÙY CHỌN, mặc định 0
+  - ghi_chu: chi tiết khác
+
+═══ NHÓM (cho expense) ═══
+"Liêm/Liem/liemdo" = Nhóm LV. Các tên khác suy theo ngữ cảnh, không chắc thì để "".
+
+═══ GHÉP CÂU TRẢ LỜI CLARIFICATION ═══
+Nếu USER PROMPT chứa "[CÂU GỐC]: ... [BỔ SUNG]: ...", bạn phải GHÉP cả 2 phần,
+hiểu BỔ SUNG là user trả lời câu hỏi bạn đã hỏi về CÂU GỐC. Trích xuất từ
+tổng hợp 2 phần. KHÔNG hỏi lại lần nữa.
+
+═══ NẾU KHÔNG PHẢI HÀNH ĐỘNG GHI ═══
+Tin là câu hỏi, chào hỏi, hoặc không liên quan ghi chép → write_intent="unknown".
+
+═══ FORMAT OUTPUT ═══
+CHỈ trả JSON, không markdown, không giải thích:
+{"write_intent": "...", "needs_clarification": false, "clarification_question": "", "items": [...]}
 """
 
 

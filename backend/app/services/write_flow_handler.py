@@ -16,6 +16,8 @@ PENDING_TTL_SECONDS = 600
 class PendingWrite:
     parsed: ParsedWrite
     created_at: float = field(default_factory=time.time)
+    mode: str = "confirm"
+    original_text: str = ""
 
     @property
     def expired(self) -> bool:
@@ -44,7 +46,11 @@ class WriteFlowHandler:
         key = (chat_id, user_id)
         pending = self._pending.get(key)
 
-        if pending and not pending.expired:
+        if pending and pending.expired:
+            self._pending.pop(key, None)
+            pending = None
+
+        if pending and pending.mode == "confirm":
             decision = self._interpret_yes_no(text)
             if decision == "yes":
                 self._pending.pop(key, None)
@@ -54,18 +60,34 @@ class WriteFlowHandler:
                 return "Đã huỷ, không ghi gì cả. Bạn gửi lại khi cần nhé."
             self._pending.pop(key, None)
 
-        if pending and pending.expired:
+        if pending and pending.mode == "clarify":
             self._pending.pop(key, None)
+            merged_text = f"[CÂU GỐC]: {pending.original_text}\n[BỔ SUNG]: {text}"
+            parsed = await parse_write_message(merged_text)
+            if parsed.needs_clarification or not parsed.items:
+                return (
+                    "Mình vẫn chưa parse được. Bạn gõ lại đầy đủ giúp mình nhé, vd:\n"
+                    "• \"500k ăn tối\"\n"
+                    "• \"24/5 - 300k xăng nhóm LV trả\""
+                )
+            self._pending[key] = PendingWrite(parsed=parsed, mode="confirm")
+            return self._build_preview(parsed)
 
         parsed = await parse_write_message(text)
         if parsed.write_intent == "unknown":
             return None
         if parsed.needs_clarification:
-            return f"🤔 {parsed.clarification_question}" if parsed.clarification_question else "🤔 Mình chưa rõ thông tin. Bạn ghi rõ hơn giúp mình nhé."
+            self._pending[key] = PendingWrite(
+                parsed=parsed,
+                mode="clarify",
+                original_text=text,
+            )
+            question = parsed.clarification_question or "Bạn ghi rõ hơn giúp mình nhé."
+            return f"🤔 {question}"
         if not parsed.items:
             return None
 
-        self._pending[key] = PendingWrite(parsed=parsed)
+        self._pending[key] = PendingWrite(parsed=parsed, mode="confirm")
         return self._build_preview(parsed)
 
     def _interpret_yes_no(self, text: str) -> str:
