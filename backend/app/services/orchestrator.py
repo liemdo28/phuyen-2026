@@ -40,12 +40,17 @@ from app.rhythm.rhythm_engine import RhythmState
 from app.safety.safety_engine import SafetyState
 from app.schemas.assistant import AssistantIntent, AssistantResponse
 from app.schemas.telegram import TelegramUpdate
+from app.adapters.sheets_api_client import SheetsApiError
+from app.services.nlu import classify_travel_intent
 from app.services.action_logger import ActionLogger
 from app.services.command_handlers import CommandHandlers
 from app.services.loop_guard import LoopGuard
 from app.services.memory import MemoryService
 from app.services.maps_service import build_telegram_keyboard, find_place
+from app.services.sheet_mapping import TRAVEL_MAPPINGS
+from app.services.sheet_query import extract_query_params
 from app.services.travel_companion import TravelCompanionEngine
+from app.services.travel_formatters import format_travel_reply
 from app.services.trip_context import TripContextService
 from app.services.write_flow_handler import WriteFlowHandler
 from app.nlp.conversation_merger import ConversationMerger, MergedIntent
@@ -113,10 +118,11 @@ class TelegramOrchestrator:
         self.llm = LLMAdapter()
         self.media = MediaAdapter()
         self.telegram = TelegramAdapter()
-        self.workflow = WorkflowEngine(GoogleSheetsAdapter())
+        self.sheets = GoogleSheetsAdapter()
+        self.workflow = WorkflowEngine(self.sheets)
         self.action_logger = ActionLogger()
         self.loop_guard = LoopGuard()
-        self.commands = CommandHandlers()
+        self.commands = CommandHandlers(sheet_adapter=self.sheets)
         self.write_flow = WriteFlowHandler()
         self.companion = TravelCompanionEngine()
         self.trip_context = TripContextService()
@@ -203,6 +209,42 @@ class TelegramOrchestrator:
                         chat.id, link_response.text, reply_markup=link_response.reply_markup
                     )
                 return
+
+            travel_intent = classify_travel_intent(incoming_text)
+            if travel_intent is not None:
+                try:
+                    travel_reply = await self._handle_travel_query(
+                        travel_intent, incoming_text, chat.id, user.id
+                    )
+                    await self.action_logger.log(
+                        "travel_query_response",
+                        chat.id,
+                        user.id,
+                        {"intent": travel_intent, "text": incoming_text},
+                    )
+                    if decision.allow_reply:
+                        await self.telegram.send_message(
+                            chat.id,
+                            travel_reply.text,
+                            reply_markup=travel_reply.reply_markup,
+                        )
+                    return
+                except SheetsApiError:
+                    logger.exception(
+                        "travel_query_sheet_error chat_id=%s intent=%s",
+                        chat.id,
+                        travel_intent,
+                    )
+                    sheet_url = self._default_sheet_url()
+                    fallback = (
+                        "Mình không đọc được sheet chuyến đi lúc này. "
+                        "Bạn thử lại sau 1 phút nhé."
+                    )
+                    if sheet_url:
+                        fallback += f"\n\nXem trực tiếp: {sheet_url}"
+                    if decision.allow_reply:
+                        await self.telegram.send_message(chat.id, fallback)
+                    return
 
             # Human Chaos NLP: merge fragmented multi-message conversations
             merged_intent: MergedIntent = self.merger.merge(
@@ -495,6 +537,37 @@ class TelegramOrchestrator:
             reply_markup=reply_markup,
             suggested_place_name=companion.place_name,
         )
+
+    async def _handle_travel_query(
+        self,
+        intent: str,
+        text: str,
+        chat_id: int,
+        user_id: int,
+    ) -> AssistantResponse:
+        mapping = TRAVEL_MAPPINGS[intent]
+        data, cache_hit = await self.sheets.read_sheet_cached_with_meta(mapping.sheet_name)
+        query_params = extract_query_params(text, intent)
+        await self.action_logger.log(
+            "sheet_query",
+            chat_id,
+            user_id,
+            {
+                "intent": intent,
+                "sheet": mapping.sheet_name,
+                "row_count": len(data),
+                "filter": query_params,
+                "cache_hit": cache_hit,
+            },
+        )
+        reply_text = format_travel_reply(
+            intent,
+            data,
+            query_params,
+            spreadsheet_url=self._default_sheet_url(),
+            sheet_gid=mapping.gid,
+        )
+        return AssistantResponse(text=reply_text)
 
     async def _extract_message_text(self, message) -> str:
         if message.text:

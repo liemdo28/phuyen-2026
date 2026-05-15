@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import unicodedata
 
 from app.ai.action_engine import infer_action_name
 from app.nlp.intent_preprocessor import preprocess_intent_text
@@ -23,6 +24,42 @@ UPDATE_MARKERS = ["update", "cập nhật", "sửa", "đổi", "dời", "chỉnh
 DELETE_MARKERS = ["xóa", "xoá", "remove", "delete"]
 QUERY_MARKERS = ["bao nhiêu", "có", "tìm", "sao", "nào", "không", "hôm nay", "hôm qua"]
 REFERENCE_PATTERNS = ["cái trên", "cái hôm qua", "task kia", "task này", "bill này", "khoản đó"]
+INTENT_KEYWORDS = {
+    "itinerary": [
+        "lich trinh", "lich di", "lich hom nay", "lich ngay mai",
+        "lich ngay", "ngay mai lam gi", "hom nay lam gi",
+        "schedule", "itinerary", "ke hoach ngay",
+    ],
+    "food": [
+        "an gi", "an dau", "quan an", "quan nao", "nha hang",
+        "food", "restaurant", "dac san", "do an",
+    ],
+    "suggestion": [
+        "goi y", "diem den", "co gi choi", "tham quan", "noi nao dep",
+    ],
+    "weather": [
+        "thoi tiet", "troi", "mua khong", "nang khong",
+        "forecast", "weather",
+    ],
+    "packing": [
+        "phai dem", "can mang", "do can", "checklist", "danh sach do",
+        "quen gi", "thieu gi",
+    ],
+    "contribution": [
+        "ai gop", "gop tien", "dong bao nhieu", "share tien",
+        "ung truoc", "phi ca nhan",
+    ],
+    "budget": [
+        "ngan sach", "chi phi", "tong chi", "het bao nhieu",
+        "tien con lai", "budget", "tong cong",
+    ],
+    "expense_query": [
+        "chi tieu", "xem chi", "xem bill", "bill nao", "da chi",
+    ],
+    "summary": [
+        "tong hop", "bao cao tong", "summary",
+    ],
+}
 
 
 def heuristic_intent_parse(message_text: str, memory_summary: str = "") -> AssistantIntent:
@@ -56,6 +93,20 @@ def heuristic_intent_parse(message_text: str, memory_summary: str = "") -> Assis
 
 def normalize_text(text: str) -> str:
     return re.sub(r"\s+", " ", text.strip().lower())
+
+
+def normalize_loose_text(text: str) -> str:
+    nfkd = unicodedata.normalize("NFKD", text.strip().lower())
+    ascii_text = "".join(c for c in nfkd if not unicodedata.combining(c)).replace("đ", "d")
+    return re.sub(r"\s+", " ", ascii_text)
+
+
+def classify_travel_intent(text: str) -> str | None:
+    normalized = normalize_loose_text(text)
+    for intent, keywords in INTENT_KEYWORDS.items():
+        if any(keyword in normalized for keyword in keywords):
+            return intent
+    return None
 
 
 def detect_intent_type(text: str) -> str:

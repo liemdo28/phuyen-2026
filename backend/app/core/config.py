@@ -22,6 +22,7 @@ class Settings:
     google_service_account_json: str = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON", "")
     default_spreadsheet_id: str = os.getenv("DEFAULT_SPREADSHEET_ID", "")
     default_spreadsheet_url: str = os.getenv("DEFAULT_SPREADSHEET_URL", "")
+    sheet_cache_ttl_seconds: int = int(os.getenv("SHEET_CACHE_TTL_SECONDS", "30"))
     sheets_webapp_url: str = os.getenv("SHEETS_WEBAPP_URL", "")
     sheets_api_secret: str = os.getenv("SHEETS_API_SECRET", "")
     redis_url: str = os.getenv("REDIS_URL", "")

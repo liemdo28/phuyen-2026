@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from app.adapters.google_sheets import GoogleSheetsAdapter
 from app.adapters.sheets_api_client import SheetsApiClient, SheetsApiError
 
 
@@ -26,14 +27,20 @@ COMMAND_LIST = [
     ("/dadem", "đồ đã đem"),
     ("/quanan", "danh sách quán ăn"),
     ("/thanhvien", "danh sách thành viên"),
+    ("/reload", "refresh data cache từ Google Sheet"),
     ("/id", "lấy Telegram User ID"),
     ("/menu", "xem lại danh sách lệnh"),
 ]
 
 
 class CommandHandlers:
-    def __init__(self, sheets: SheetsApiClient | None = None) -> None:
+    def __init__(
+        self,
+        sheets: SheetsApiClient | None = None,
+        sheet_adapter: GoogleSheetsAdapter | None = None,
+    ) -> None:
         self.sheets = sheets or SheetsApiClient()
+        self.sheet_adapter = sheet_adapter or GoogleSheetsAdapter()
 
     async def handle(self, text: str, message) -> str | None:
         if not text.startswith("/"):
@@ -56,6 +63,7 @@ class CommandHandlers:
             "/dadem": self._dadem,
             "/quanan": self._quanan,
             "/thanhvien": self._thanhvien,
+            "/reload": self._reload,
         }.get(cmd)
 
         if handler is None:
@@ -283,3 +291,7 @@ class CommandHandlers:
                 note = f" — {member['note']}" if member.get("note") else ""
                 lines.append(f"   • {member['name']}{uname}{note}")
         return "\n".join(lines)
+
+    async def _reload(self, message) -> str:
+        self.sheet_adapter.invalidate_cache()
+        return "✅ Đã refresh data từ sheet."
