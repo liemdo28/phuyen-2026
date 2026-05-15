@@ -9,6 +9,7 @@ from app.adapters.google_sheets import GoogleSheetsAdapter
 from app.adapters.llm import LLMAdapter
 from app.adapters.media import MediaAdapter
 from app.adapters.telegram import TelegramAdapter
+from app.core.config import settings
 from app.ethics.calm_technology import CalmTechnologyPolicy
 from app.orchestration.travel_brain import TravelBrain
 from app.orchestration.travel_operating_system import TravelOperatingSystem
@@ -118,6 +119,22 @@ class TelegramOrchestrator:
                 await self.action_logger.log("command_response", chat.id, user.id, {"text": incoming_text, "reply": command_reply})
                 if decision.allow_reply:
                     await self.telegram.send_message(chat.id, command_reply)
+                return
+
+            link_response = self._direct_link_response(incoming_text, context)
+            if link_response is not None:
+                await self.action_logger.log(
+                    "direct_link_response",
+                    chat.id,
+                    user.id,
+                    {
+                        "text": incoming_text,
+                        "reply": link_response.text,
+                        "has_map_button": link_response.reply_markup is not None,
+                    },
+                )
+                if decision.allow_reply:
+                    await self.telegram.send_message(chat.id, link_response.text, reply_markup=link_response.reply_markup)
                 return
 
             write_reply = await self.write_flow.handle(incoming_text, chat.id, user.id)
@@ -351,6 +368,68 @@ class TelegramOrchestrator:
         if "transport_context" in state.signals:
             updates["transport_sensitive"] = True
         return updates
+
+    def _direct_link_response(self, incoming_text: str, context) -> AssistantResponse | None:
+        text = incoming_text.lower().strip()
+        if not text:
+            return None
+
+        if self._is_sheet_link_request(text):
+            url = self._default_sheet_url()
+            if url:
+                return AssistantResponse(
+                    text=f"Đây là file Google Sheet của chuyến đi:\n{url}\n\nNếu muốn mình mở đúng sheet hoặc đúng phần chi tiêu/góp tiền thì nói tiếp nhé.",
+                )
+            return AssistantResponse(
+                text="Mình chưa thấy `DEFAULT_SPREADSHEET_ID` ở môi trường này, nên chưa gửi link file sheet tự động được. Nếu bạn muốn, mình có thể giúp kiểm tra env này tiếp.",
+            )
+
+        if self._is_maps_request(text):
+            place = self._resolve_recent_place(context, incoming_text)
+            if place is None:
+                return AssistantResponse(
+                    text="Có nhé. Bạn chỉ cần nói tên chỗ muốn mở Maps, ví dụ `mở maps Bãi Xép` hoặc `mở maps Gành Đá Đĩa`, mình sẽ gửi nút mở thẳng luôn.",
+                )
+            return AssistantResponse(
+                text=f"Mở Maps cho {place.name} đây. Nếu cần mình gửi luôn chỉ đường lái xe thì bấm nút bên dưới nhé.",
+                reply_markup=build_telegram_keyboard(place),
+                suggested_place_name=place.name,
+            )
+
+        return None
+
+    def _is_sheet_link_request(self, text: str) -> bool:
+        sheet_markers = [
+            "gg sheet",
+            "google sheet",
+            "file sheet",
+            "file gg sheet",
+            "link sheet",
+            "link file",
+            "mở sheet",
+            "mo sheet",
+            "file ggsheet",
+        ]
+        return "sheet" in text and any(marker in text for marker in sheet_markers)
+
+    def _is_maps_request(self, text: str) -> bool:
+        return "map" in text or "maps" in text or "chỉ đường" in text or "chi duong" in text
+
+    def _default_sheet_url(self) -> str:
+        if not settings.default_spreadsheet_id:
+            return ""
+        return f"https://docs.google.com/spreadsheets/d/{settings.default_spreadsheet_id}/edit"
+
+    def _resolve_recent_place(self, context, current_text: str):
+        candidates = [current_text]
+        for turn in reversed(context.conversation[-6:]):
+            if turn.text:
+                candidates.append(turn.text)
+        for candidate in candidates:
+            place = find_place(candidate)
+            if place is not None:
+                return place
+        return None
 
     def _build_companion_interaction_guidance(self, brain, calm, recovery) -> str:
         lines: list[str] = []
