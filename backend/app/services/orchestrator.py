@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import datetime
+
 from app.ai.context_resolver import build_context_snapshot
 from app.ai.entity_resolver import resolve_entity_reference
 from app.ai.workflow_reasoner import build_workflow_reasoning
@@ -18,6 +20,7 @@ from app.services.maps_service import build_telegram_keyboard, find_place
 from app.services.travel_companion import TravelCompanionEngine
 from app.services.trip_context import TripContextService
 from app.services.write_flow_handler import WriteFlowHandler
+from app.nlp.conversation_merger import ConversationMerger, MergedIntent
 from app.services.workflow_engine import WorkflowEngine
 
 # Domains routed to sheets workflow (not companion AI)
@@ -40,6 +43,8 @@ class TelegramOrchestrator:
         self.trip_context = TripContextService()
         # Phase 5: Autonomous Travel Operating System
         self.travel_os = TravelOperatingSystem()
+        # Phase: Human Chaos NLP — multi-message conversation merger
+        self.merger = ConversationMerger()
 
     async def handle_update(self, update: TelegramUpdate) -> None:
         message = update.message
@@ -95,6 +100,11 @@ class TelegramOrchestrator:
                     await self.telegram.send_message(chat.id, "Mình đã nhận nội dung này, nhưng hiện chỉ mới xử lý tốt text/voice/ảnh theo pipeline AI mới.")
                 return
 
+            # Human Chaos NLP: merge fragmented multi-message conversations
+            merged_intent: MergedIntent = self.merger.merge(
+                chat.id, incoming_text, datetime.now()
+            )
+
             command_reply = await self.commands.handle(incoming_text.strip(), message)
             if command_reply is not None:
                 await self.action_logger.log("command_response", chat.id, user.id, {"text": incoming_text, "reply": command_reply})
@@ -105,7 +115,10 @@ class TelegramOrchestrator:
             write_reply = await self.write_flow.handle(incoming_text, chat.id, user.id)
             if write_reply is not None:
                 await self.action_logger.log("write_flow_response", chat.id, user.id, {"text": incoming_text, "reply": write_reply})
-                if decision.allow_reply:
+                soft_confirm = merged_intent.soft_confirmation_text()
+                if soft_confirm and decision.allow_reply:
+                    await self.telegram.send_message(chat.id, f"{soft_confirm} — đã lưu rồi nhé!")
+                elif decision.allow_reply:
                     await self.telegram.send_message(chat.id, write_reply)
                 return
 
