@@ -228,7 +228,14 @@ class TelegramOrchestrator:
 
             if _is_companion_mode(intent_result.intent):
                 # Travel/chat/general → OpenAI with trip context + emotional state
-                response = await self._companion_reply(incoming_text, context, companion_state)
+                response = await self._companion_reply(
+                    incoming_text,
+                    context,
+                    companion_state,
+                    travel_brain_state,
+                    calm_decision,
+                    recovery_plan,
+                )
                 # Phase 5: enhance with Travel OS
                 response.text = self.companion.adapt_reply(response.text, companion_state, intent=intent_result.intent)
                 response.text = self.travel_os.enhance_reply(response.text, travel_os_state, intent=intent_result.intent)
@@ -279,14 +286,20 @@ class TelegramOrchestrator:
                 except Exception:
                     pass
 
-    async def _companion_reply(self, message_text: str, context, companion_state) -> AssistantResponse:
+    async def _companion_reply(self, message_text: str, context, companion_state, travel_brain_state, calm_decision, recovery_plan) -> AssistantResponse:
         trip_state = self.trip_context.get_state()
         trip_context_str = self.trip_context.format_for_prompt(trip_state, companion_state=companion_state)
+        interaction_guidance = self._build_companion_interaction_guidance(
+            travel_brain_state,
+            calm_decision,
+            recovery_plan,
+        )
         conversation_history = _context_to_messages(context)
         companion = await self.llm.generate_companion_reply(
             message_text,
             conversation_history,
             trip_context_str,
+            interaction_guidance,
         )
         # Auto-attach Maps buttons if AI recommended a specific place
         reply_markup = None
@@ -338,6 +351,27 @@ class TelegramOrchestrator:
         if "transport_context" in state.signals:
             updates["transport_sensitive"] = True
         return updates
+
+    def _build_companion_interaction_guidance(self, brain, calm, recovery) -> str:
+        lines: list[str] = []
+        if calm.max_option_count <= 2:
+            lines.append("Keep the reply tightly scoped: prefer 1-2 options maximum.")
+        if calm.should_batch:
+            lines.append("Collapse multiple ideas into one calm, low-friction answer.")
+        if brain.city_flow.stress_propagation_risk >= 0.55:
+            lines.append("The surrounding movement context is stressful; reduce movement and avoid multi-stop suggestions.")
+        if brain.attention_protection.noise_risk >= 0.45:
+            lines.append("Protect the user's attention: speak less, remove extra detail, and avoid noisy option lists.")
+        if recovery.protect_energy:
+            lines.append("Prioritize recovery, comfort, and shorter movement over exploration.")
+        if brain.emotional_zone.name == "overstimulating_zone":
+            lines.append("Avoid recommending overstimulating environments unless the user explicitly asks for them.")
+        elif brain.emotional_zone.name in {"calming_zone", "recovery_zone"}:
+            lines.append("If helpful, lean toward calming or restorative environments.")
+        if brain.operating.recommendation_posture == "expand":
+            lines.append("The user still has energy to explore, but only add one meaningful extra idea if it stays low-friction.")
+        lines.append(f"Current response budget: at most {calm.max_option_count} surfaced options.")
+        return "\n".join(lines)
 
     def _compose_live_reply(
         self,

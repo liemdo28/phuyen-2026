@@ -53,6 +53,7 @@ class LLMAdapter:
         message_text: str,
         conversation_history: list[dict[str, str]],
         trip_context_str: str = "",
+        interaction_guidance: str = "",
     ) -> CompanionReply:
         if not settings.openai_api_key:
             logger.warning("No OPENAI_API_KEY — using heuristic companion reply")
@@ -63,7 +64,7 @@ class LLMAdapter:
         except ImportError:
             return CompanionReply(text=_heuristic_companion_reply(message_text))
 
-        system = _build_system_prompt(trip_context_str) + _STRUCTURED_SUFFIX
+        system = _build_system_prompt(trip_context_str, interaction_guidance) + _STRUCTURED_SUFFIX
         messages = _build_messages(system, conversation_history, message_text)
 
         try:
@@ -83,11 +84,14 @@ class LLMAdapter:
             return CompanionReply(text=_heuristic_companion_reply(message_text))
 
 
-def _build_system_prompt(trip_context_str: str) -> str:
+def _build_system_prompt(trip_context_str: str, interaction_guidance: str = "") -> str:
     base = _COMPANION_PROMPT_PATH.read_text(encoding="utf-8")
+    parts = [base]
     if trip_context_str:
-        return base + f"\n\n## Current Trip State\n{trip_context_str}"
-    return base
+        parts.append(f"## Current Trip State\n{trip_context_str}")
+    if interaction_guidance:
+        parts.append(f"## Current Interaction Guidance\n{interaction_guidance}")
+    return "\n\n".join(parts)
 
 
 def _build_messages(
