@@ -79,8 +79,11 @@ class LLMAdapter:
                 )
             raw = response.choices[0].message.content or "{}"
             return _parse_companion_response(raw)
+        except asyncio.TimeoutError:
+            logger.warning("OpenAI companion timed out after 15s — falling back to heuristic")
+            return CompanionReply(text=_heuristic_companion_reply(message_text))
         except Exception as exc:
-            logger.error("OpenAI companion reply error: %s", exc)
+            logger.exception("OpenAI companion reply error: %s", exc)
             return CompanionReply(text=_heuristic_companion_reply(message_text))
 
 

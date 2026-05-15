@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import asyncio
+import logging
+import unicodedata
 from datetime import datetime
 
 from app.ai.context_resolver import build_context_snapshot
@@ -9,11 +12,31 @@ from app.adapters.google_sheets import GoogleSheetsAdapter
 from app.adapters.llm import LLMAdapter
 from app.adapters.media import MediaAdapter
 from app.adapters.telegram import TelegramAdapter
+from app.behavior.profile_engine import TravelBehaviorProfile
+from app.civilization.attention_guard import AttentionProtectionDecision
+from app.civilization.city_flow import CityFlowState
+from app.civilization.collective_rhythm import CollectiveRhythmState
+from app.civilization.emotional_geography import EmotionalZone
+from app.civilization.planetary_model import PlanetaryHumanExperienceState
 from app.core.config import settings
+from app.emotional.emotional_memory import EmotionalMemorySnapshot
 from app.ethics.calm_technology import CalmTechnologyPolicy
+from app.ethics.calm_technology import CalmTechnologyDecision
+from app.fatigue.energy_engine import TravelEnergyState
+import httpx
+from app.local.local_intelligence import LocalIntelligenceState
+from app.personalization.profile_manager import PersonalizationSnapshot
+from app.prediction.journey_prediction import PredictionState
 from app.orchestration.travel_brain import TravelBrain
+from app.orchestration.travel_brain import TravelBrainDecision
 from app.orchestration.travel_operating_system import TravelOperatingSystem
+from app.orchestration.travel_operating_system import TravelOperatingState
 from app.recovery.recovery_engine import RecoveryEngine
+from app.recovery.recovery_engine import RecoveryPlan
+from app.realtime.live_context import LiveTravelContext
+from app.realtime.world_model import RealtimeWorldModel
+from app.rhythm.rhythm_engine import RhythmState
+from app.safety.safety_engine import SafetyState
 from app.schemas.assistant import AssistantIntent, AssistantResponse
 from app.schemas.telegram import TelegramUpdate
 from app.services.action_logger import ActionLogger
@@ -26,11 +49,59 @@ from app.services.trip_context import TripContextService
 from app.services.write_flow_handler import WriteFlowHandler
 from app.nlp.conversation_merger import ConversationMerger, MergedIntent
 from app.services.workflow_engine import WorkflowEngine
+from app.social.group_dynamics import GroupDynamicsState
 from app.society.agent_society import TravelAgentSociety
+from app.society.agent_society import SocietyDecision
 
 # Domains routed to sheets workflow (not companion AI)
 _STRUCTURED_DOMAINS = {"expense", "task", "inventory", "revenue", "crm"}
 _STRUCTURED_ACTIONS = {"create", "update", "delete"}
+logger = logging.getLogger(__name__)
+
+
+def _strip_diacritics(text: str) -> str:
+    """Lowercase + remove Vietnamese diacritics for loose matching."""
+    nfkd = unicodedata.normalize("NFKD", text.lower())
+    return "".join(c for c in nfkd if not unicodedata.combining(c)).replace("đ", "d")
+
+
+_SHEET_TRIGGERS = (
+    "gg sheet",
+    "ggsheet",
+    "google sheet",
+    "file sheet",
+    "file gg sheet",
+    "link sheet",
+    "link file sheet",
+    "link file gg",
+    "mo sheet",
+    "open sheet",
+    "sheet dau",
+    "sheet o dau",
+    "cho sheet",
+    "gui sheet",
+    "gui link sheet",
+    "xem sheet",
+    "sheet di",
+    "co sheet",
+    "co file sheet",
+    "co file gg sheet",
+)
+
+_MAPS_TRIGGERS = (
+    "map",
+    "maps",
+    "google map",
+    "google maps",
+    "gg map",
+    "gg maps",
+    "chi duong",
+    "dan duong",
+    "co maps",
+    "co map",
+    "mo map",
+    "mo maps",
+)
 
 
 class TelegramOrchestrator:
@@ -109,34 +180,10 @@ class TelegramOrchestrator:
                     await self.telegram.send_message(chat.id, "Mình đã nhận nội dung này, nhưng hiện chỉ mới xử lý tốt text/voice/ảnh theo pipeline AI mới.")
                 return
 
-            # Human Chaos NLP: merge fragmented multi-message conversations
-            merged_intent: MergedIntent = self.merger.merge(
-                chat.id, incoming_text, datetime.now()
-            )
-
-            command_reply = await self.commands.handle(incoming_text.strip(), message)
-            if command_reply is not None:
-                await self.action_logger.log("command_response", chat.id, user.id, {"text": incoming_text, "reply": command_reply})
-                if decision.allow_reply:
-                    await self.telegram.send_message(chat.id, command_reply)
-                return
-
-            try:
-                link_response = self._direct_link_response(incoming_text, context)
-            except Exception as exc:
-                await self.action_logger.log(
-                    "direct_link_exception",
-                    chat.id,
-                    user.id,
-                    {
-                        "text": incoming_text,
-                        "error": str(exc),
-                    },
-                )
-                link_response = AssistantResponse(
-                    text="Mình chưa mở link trực tiếp được ở lượt này, nhưng bạn cứ nói rõ muốn mở Maps hay mở file Sheet nào, mình sẽ chốt lại ngắn gọn hơn.",
-                )
-
+            # FAST PATH: deterministic shortcuts (sheet link, maps) — must run
+            # before the heavy LLM/Brain/Society stack so they can't be eaten by
+            # upstream failures.
+            link_response = self._direct_link_response(incoming_text, context)
             if link_response is not None:
                 await self.action_logger.log(
                     "direct_link_response",
@@ -149,7 +196,21 @@ class TelegramOrchestrator:
                     },
                 )
                 if decision.allow_reply:
-                    await self.telegram.send_message(chat.id, link_response.text, reply_markup=link_response.reply_markup)
+                    await self.telegram.send_message(
+                        chat.id, link_response.text, reply_markup=link_response.reply_markup
+                    )
+                return
+
+            # Human Chaos NLP: merge fragmented multi-message conversations
+            merged_intent: MergedIntent = self.merger.merge(
+                chat.id, incoming_text, datetime.now()
+            )
+
+            command_reply = await self.commands.handle(incoming_text.strip(), message)
+            if command_reply is not None:
+                await self.action_logger.log("command_response", chat.id, user.id, {"text": incoming_text, "reply": command_reply})
+                if decision.allow_reply:
+                    await self.telegram.send_message(chat.id, command_reply)
                 return
 
             write_reply = await self.write_flow.handle(incoming_text, chat.id, user.id)
@@ -192,26 +253,18 @@ class TelegramOrchestrator:
             companion_state = self.companion.assess(context, incoming_text, intent=intent_result.intent)
             await self.memory.update_preferences(context, self._build_preference_updates(companion_state))
 
-            # Phase 5: Autonomous Travel Operating System
-            travel_os_state = self.travel_os.assess(context, incoming_text, companion_state, intent_result.intent)
-            travel_brain_state = await self.travel_brain.assess(context, incoming_text, intent_result.intent)
-            calm_decision = self.calm_policy.evaluate(
-                future_stress=travel_os_state.prediction.future_stress,
-                safety_risk=travel_os_state.safety.risk_level,
-                burnout_risk=travel_brain_state.emotional.burnout_risk,
-                option_count=travel_brain_state.option_count,
-                user_initiated=True,
-                attention_noise_risk=travel_brain_state.attention_protection.noise_risk,
-                city_overload_risk=travel_brain_state.city_flow.stress_propagation_risk,
-            )
-            recovery_plan = self.recovery.build_plan(
-                travel_brain_state.emotional,
+            (
                 travel_os_state,
-                travel_brain_state.city_flow,
-                travel_brain_state.emotional_zone,
-                travel_brain_state.collective_rhythm,
+                travel_brain_state,
+                calm_decision,
+                recovery_plan,
+                society_decision,
+            ) = await self._safe_assess_civilization_stack(
+                context,
+                incoming_text,
+                companion_state,
+                intent_result.intent,
             )
-            society_decision = self.agent_society.coordinate(travel_brain_state, calm_decision, recovery_plan)
             await self.memory.update_preferences(context, travel_os_state.preference_updates)
             await self.memory.update_preferences(context, travel_brain_state.preference_updates)
 
@@ -297,7 +350,45 @@ class TelegramOrchestrator:
             await self.action_logger.log("assistant_response", chat.id, user.id, {"text": response.text, "has_map_button": response.reply_markup is not None})
             if decision.allow_reply:
                 await self.telegram.send_message(chat.id, response.text, reply_markup=response.reply_markup)
+        except asyncio.TimeoutError:
+            logger.exception(
+                "orchestrator_timeout chat_id=%s text=%r", chat.id, incoming_text
+            )
+            await self.action_logger.log(
+                "orchestrator_timeout",
+                chat.id,
+                user.id if user else 0,
+                {
+                    "update_id": update.update_id,
+                    "text": incoming_text,
+                },
+            )
+            if decision is None or decision.allow_reply:
+                try:
+                    await self.telegram.send_message(
+                        chat.id,
+                        "Mình đang suy nghĩ hơi chậm, bạn đợi 5-10 giây rồi gửi lại giúp nhé.",
+                    )
+                except Exception:
+                    logger.exception("failed_to_send_timeout_message chat_id=%s", chat.id)
+        except (httpx.HTTPError, httpx.TimeoutException) as exc:
+            logger.exception(
+                "orchestrator_transport_error chat_id=%s error=%s", chat.id, exc
+            )
+            await self.action_logger.log(
+                "orchestrator_transport_error",
+                chat.id,
+                user.id if user else 0,
+                {
+                    "update_id": update.update_id,
+                    "text": incoming_text,
+                    "error": str(exc),
+                },
+            )
         except Exception as exc:
+            logger.exception(
+                "orchestrator_unhandled chat_id=%s text=%r", chat.id, incoming_text
+            )
             await self.action_logger.log(
                 "orchestrator_exception",
                 chat.id,
@@ -306,6 +397,7 @@ class TelegramOrchestrator:
                     "update_id": update.update_id,
                     "message_id": message.message_id,
                     "text": incoming_text,
+                    "error_type": type(exc).__name__,
                     "error": str(exc),
                 },
             )
@@ -313,10 +405,66 @@ class TelegramOrchestrator:
                 try:
                     await self.telegram.send_message(
                         chat.id,
-                        "Mình vừa gặp lỗi khi xử lý tin nhắn này. Bạn thử gửi lại ngắn gọn hơn hoặc đợi mình một chút nhé.",
+                        "Mình bị lỗi nội bộ và đã ghi log. Bạn thử gửi lại sau nhé — nếu vẫn lỗi thì báo admin giúp.",
                     )
                 except Exception:
-                    pass
+                    logger.exception("failed_to_send_fallback_message chat_id=%s", chat.id)
+
+    async def _safe_assess_civilization_stack(
+        self,
+        context,
+        incoming_text: str,
+        companion_state,
+        intent,
+    ) -> tuple[
+        TravelOperatingState,
+        TravelBrainDecision,
+        CalmTechnologyDecision,
+        RecoveryPlan,
+        SocietyDecision,
+    ]:
+        """
+        Run the brain/os/calm/recovery/society stack. If any layer fails,
+        log it and return safe defaults so the rest of the turn can proceed.
+        """
+        try:
+            travel_os_state = self.travel_os.assess(
+                context, incoming_text, companion_state, intent
+            )
+            travel_brain_state = await self.travel_brain.assess(
+                context, incoming_text, intent
+            )
+            calm_decision = self.calm_policy.evaluate(
+                future_stress=travel_os_state.prediction.future_stress,
+                safety_risk=travel_os_state.safety.risk_level,
+                burnout_risk=travel_brain_state.emotional.burnout_risk,
+                option_count=travel_brain_state.option_count,
+                user_initiated=True,
+                attention_noise_risk=travel_brain_state.attention_protection.noise_risk,
+                city_overload_risk=travel_brain_state.city_flow.stress_propagation_risk,
+            )
+            recovery_plan = self.recovery.build_plan(
+                travel_brain_state.emotional,
+                travel_os_state,
+                travel_brain_state.city_flow,
+                travel_brain_state.emotional_zone,
+                travel_brain_state.collective_rhythm,
+            )
+            society_decision = self.agent_society.coordinate(
+                travel_brain_state, calm_decision, recovery_plan
+            )
+            return (
+                travel_os_state,
+                travel_brain_state,
+                calm_decision,
+                recovery_plan,
+                society_decision,
+            )
+        except Exception:
+            logger.exception(
+                "civilization_stack_failed — falling back to neutral defaults"
+            )
+            return self._neutral_civilization_defaults(companion_state)
 
     async def _companion_reply(self, message_text: str, context, companion_state, travel_brain_state, calm_decision, recovery_plan) -> AssistantResponse:
         trip_state = self.trip_context.get_state()
@@ -414,21 +562,12 @@ class TelegramOrchestrator:
         return None
 
     def _is_sheet_link_request(self, text: str) -> bool:
-        sheet_markers = [
-            "gg sheet",
-            "google sheet",
-            "file sheet",
-            "file gg sheet",
-            "link sheet",
-            "link file",
-            "mở sheet",
-            "mo sheet",
-            "file ggsheet",
-        ]
-        return "sheet" in text and any(marker in text for marker in sheet_markers)
+        normalized = _strip_diacritics(text)
+        return any(trigger in normalized for trigger in _SHEET_TRIGGERS)
 
     def _is_maps_request(self, text: str) -> bool:
-        return "map" in text or "maps" in text or "chỉ đường" in text or "chi duong" in text
+        normalized = _strip_diacritics(text)
+        return any(trigger in normalized for trigger in _MAPS_TRIGGERS)
 
     def _default_sheet_url(self) -> str:
         if not settings.default_spreadsheet_id:
@@ -439,8 +578,9 @@ class TelegramOrchestrator:
         candidates = [current_text]
         conversation = getattr(context, "conversation", []) or []
         for turn in reversed(conversation[-6:]):
-            if getattr(turn, "text", ""):
-                candidates.append(turn.text)
+            turn_text = getattr(turn, "text", "")
+            if isinstance(turn_text, str) and turn_text.strip():
+                candidates.append(turn_text)
         for candidate in candidates:
             try:
                 place = find_place(candidate)
@@ -449,6 +589,55 @@ class TelegramOrchestrator:
             if place is not None:
                 return place
         return None
+
+    def _neutral_civilization_defaults(
+        self, companion_state
+    ) -> tuple[
+        TravelOperatingState,
+        TravelBrainDecision,
+        CalmTechnologyDecision,
+        RecoveryPlan,
+        SocietyDecision,
+    ]:
+        operating = TravelOperatingState(
+            world=RealtimeWorldModel(),
+            energy=TravelEnergyState(),
+            profile=TravelBehaviorProfile(),
+            local=LocalIntelligenceState(),
+            group=GroupDynamicsState(),
+            prediction=PredictionState(),
+            safety=SafetyState(),
+            rhythm=RhythmState(),
+            recommendation_posture="balanced",
+            preference_updates={},
+        )
+        brain = TravelBrainDecision(
+            companion=companion_state,
+            operating=operating,
+            emotional=EmotionalMemorySnapshot(),
+            personalization=PersonalizationSnapshot(),
+            live_context=LiveTravelContext(),
+            city_flow=CityFlowState(),
+            attention_protection=AttentionProtectionDecision(),
+            emotional_zone=EmotionalZone(name="balanced_zone"),
+            collective_rhythm=CollectiveRhythmState(),
+            planetary=PlanetaryHumanExperienceState(),
+            option_count=2,
+            guidance=[],
+            preference_updates={},
+        )
+        calm = CalmTechnologyDecision(
+            should_interrupt=False,
+            urgency="low",
+            allowed_surface="chat_only",
+            max_option_count=2,
+            notification_budget=1,
+            should_batch=True,
+            rationale=["Neutral fallback after civilization stack failure."],
+        )
+        recovery = RecoveryPlan()
+        society = SocietyDecision()
+        return operating, brain, calm, recovery, society
 
     def _build_companion_interaction_guidance(self, brain, calm, recovery) -> str:
         lines: list[str] = []
