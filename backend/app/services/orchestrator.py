@@ -54,6 +54,7 @@ from app.services.travel_formatters import format_travel_reply
 from app.services.trip_context import TripContextService
 from app.services.write_flow_handler import WriteFlowHandler
 from app.nlp.conversation_merger import ConversationMerger, MergedIntent
+from app.services.location_intelligence import get_location_intelligence, LocationIntentResult
 from app.services.workflow_engine import WorkflowEngine
 from app.social.group_dynamics import GroupDynamicsState
 from app.society.agent_society import TravelAgentSociety
@@ -134,6 +135,8 @@ class TelegramOrchestrator:
         self.agent_society = TravelAgentSociety()
         # Phase: Human Chaos NLP — multi-message conversation merger
         self.merger = ConversationMerger()
+        # Phase: Google Sheet Location Intelligence — natural language place search
+        self.location_intel = get_location_intelligence()
 
     async def handle_update(self, update: TelegramUpdate) -> None:
         message = update.message
@@ -209,6 +212,53 @@ class TelegramOrchestrator:
                         chat.id, link_response.text, reply_markup=link_response.reply_markup
                     )
                 return
+
+            # FAST PATH: Location Intelligence — natural language place search
+            # User sends location pin → extract coords
+            user_lat = None
+            user_lon = None
+            if message.location:
+                user_lat = message.location.latitude
+                user_lon = message.location.longitude
+            # Detect location intent: "mở quán hải sản", "maps", "đường tới bãi xép", etc.
+            location_intent = await self.location_intel.detect_intent(
+                incoming_text,
+                user_lat=user_lat or context.get("last_lat"),
+                user_lon=user_lon or context.get("last_lon"),
+            )
+            if location_intent.is_location_intent and incoming_text.strip():
+                try:
+                    # Search indexed locations
+                    results = await self.location_intel.search(
+                        query=location_intent.query,
+                        user_lat=location_intent.user_lat or context.get("last_lat"),
+                        user_lon=location_intent.user_lon or context.get("last_lon"),
+                        category=location_intent.category or None,
+                        on_route=location_intent.on_route or None,
+                        child_safe=location_intent.child_safe,
+                        limit=5,
+                    )
+                    if results:
+                        reply_text = self.location_intel.format_multi_result_text(
+                            results,
+                            header="📍 Địa điểm gần bạn:",
+                        )
+                        reply_markup = None
+                        if results:
+                            reply_markup = self.location_intel.build_telegram_buttons(results[0])
+                        await self.action_logger.log(
+                            "location_intelligence_response",
+                            chat.id,
+                            user.id,
+                            {"query": location_intent.query, "results": len(results)},
+                        )
+                        if decision.allow_reply:
+                            await self.telegram.send_message(
+                                chat.id, reply_text, reply_markup=reply_markup
+                            )
+                        return
+                except Exception:
+                    logger.exception("location_intelligence_error chat_id=%s", chat.id)
 
             travel_intent = classify_travel_intent(incoming_text)
             if travel_intent is not None:
