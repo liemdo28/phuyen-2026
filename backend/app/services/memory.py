@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import datetime
+
 from app.models.domain import EntityReference, MemoryTurn, UserContext
 from app.services.persistence import PersistenceStore
 
@@ -14,10 +16,21 @@ class MemoryService:
         if key not in self._contexts:
             context = UserContext(chat_id=chat_id, user_id=user_id)
             for turn in self.store.get_recent_turns(chat_id, user_id):
-                context.conversation.append(MemoryTurn(role=turn.role, text=turn.text))
+                context.conversation.append(
+                    MemoryTurn(
+                        role=turn.role,
+                        text=turn.text,
+                        timestamp=datetime.fromisoformat(turn.created_at),
+                    )
+                )
             for entity in self.store.get_recent_entities(chat_id, user_id):
                 context.entities.append(
-                    EntityReference(entity_type=entity.entity_type, entity_id=entity.entity_id, payload=entity.payload)
+                    EntityReference(
+                        entity_type=entity.entity_type,
+                        entity_id=entity.entity_id,
+                        payload=entity.payload,
+                        timestamp=datetime.fromisoformat(entity.created_at),
+                    )
                 )
             self._contexts[key] = context
         return self._contexts[key]
@@ -37,7 +50,11 @@ class MemoryService:
         context.entities = context.entities[-20:]
         self.store.append_entity(context.chat_id, context.user_id, entity_type, entity_id, payload)
 
+    async def update_preferences(self, context: UserContext, values: dict[str, object]) -> None:
+        context.preferences.update(values)
+
     def summarize(self, context: UserContext) -> str:
         recent_messages = [f"{turn.role}: {turn.text}" for turn in context.conversation[-6:]]
         recent_entities = [f"{entity.entity_type}:{entity.entity_id}:{entity.payload}" for entity in context.entities[-4:]]
-        return "\n".join(recent_messages + recent_entities)
+        preferences = [f"pref:{key}={value}" for key, value in sorted(context.preferences.items())]
+        return "\n".join(recent_messages + recent_entities + preferences)

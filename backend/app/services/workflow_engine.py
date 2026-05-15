@@ -2,22 +2,23 @@ from __future__ import annotations
 
 from app.adapters.google_sheets import GoogleSheetsAdapter, SheetsActionResult
 from app.schemas.assistant import AssistantIntent, AssistantResponse
+from app.services.travel_companion import TravelCompanionState
 
 
 class WorkflowEngine:
     def __init__(self, sheets_adapter: GoogleSheetsAdapter) -> None:
         self.sheets = sheets_adapter
 
-    async def execute(self, intent: AssistantIntent) -> AssistantResponse:
+    async def execute(self, intent: AssistantIntent, companion_state: TravelCompanionState | None = None) -> AssistantResponse:
         if intent.intent_type == "create":
             return await self._handle_create(intent)
         if intent.intent_type == "update":
             return await self._handle_update(intent)
         if intent.intent_type == "query":
-            return await self._handle_query(intent)
+            return await self._handle_query(intent, companion_state)
         if intent.intent_type == "delete":
             return AssistantResponse(text="Mình hiểu ý xoá rồi, nhưng backend xoá cứng chưa được bật ở môi trường này.")
-        return AssistantResponse(text=self._chat_reply(intent))
+        return AssistantResponse(text=self._chat_reply(intent, companion_state))
 
     async def _handle_create(self, intent: AssistantIntent) -> AssistantResponse:
         domain = normalize_domain(intent.domain)
@@ -31,19 +32,35 @@ class WorkflowEngine:
             return AssistantResponse(text="Mình chưa thấy bản ghi phù hợp để cập nhật. Nếu bạn muốn, mình có thể tạo mới luôn.")
         return build_sheet_response(result, success_text="Mình đã cập nhật lại giúp bạn.")
 
-    async def _handle_query(self, intent: AssistantIntent) -> AssistantResponse:
+    async def _handle_query(self, intent: AssistantIntent, companion_state: TravelCompanionState | None = None) -> AssistantResponse:
         domain = normalize_domain(intent.domain)
         result = await self.sheets.query_records(domain, {})
         if domain == "travel":
-            return AssistantResponse(text="Mình có thể trả lời thời tiết, lịch trình, quán ăn và địa điểm gần bạn khi đã nối API thật.")
+            return AssistantResponse(text=self._travel_reply(intent, companion_state))
         if not result.rows:
             return AssistantResponse(text="Hiện mình chưa thấy dữ liệu phù hợp trong ngữ cảnh này.")
         return AssistantResponse(text=f"Mình tìm thấy {len(result.rows)} mục gần nhất trong nhóm {domain}.", action_summary=result.message)
 
-    def _chat_reply(self, intent: AssistantIntent) -> str:
+    def _chat_reply(self, intent: AssistantIntent, companion_state: TravelCompanionState | None = None) -> str:
         if intent.domain == "travel":
-            return "Mình hiểu câu hỏi theo hướng travel assistant. Khi nối API thật, mình sẽ trả lời thời tiết, quán ăn và lịch trình theo vị trí hiện tại."
+            return self._travel_reply(intent, companion_state)
         return "Mình hiểu ý bạn. Backend AI đã nhận được ngữ cảnh này và có thể chuyển nó thành workflow phù hợp."
+
+    def _travel_reply(self, intent: AssistantIntent, companion_state: TravelCompanionState | None = None) -> str:
+        if companion_state and companion_state.response_mode == "comfort":
+            return (
+                "Mình sẽ ưu tiên phương án nhẹ nhàng và ít đổi chỗ cho bạn. "
+                "Nếu bạn gửi khu vực hiện tại hoặc nói rõ đang cần ăn, nghỉ hay tránh mưa, mình sẽ chốt gọn 1-2 lựa chọn dễ đi nhất."
+            )
+        if companion_state and companion_state.response_mode == "energize":
+            return (
+                "Mood này hợp đi khám phá hơn đó. "
+                "Nếu bạn muốn, mình sẽ gợi ý thêm quán chill, góc chụp đẹp, điểm ngắm hoàng hôn hoặc hidden spot gần khu bạn đang đứng."
+            )
+        return (
+            "Mình hiểu câu hỏi theo hướng travel assistant. "
+            "Bạn cứ nói tự nhiên như đang hỏi một người local: cần ăn gì, đi đâu, tránh mưa, ngắm hoàng hôn hay muốn lịch trình nhẹ hơn."
+        )
 
 
 def normalize_domain(domain: str) -> str:

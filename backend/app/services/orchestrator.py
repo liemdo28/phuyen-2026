@@ -12,6 +12,7 @@ from app.services.action_logger import ActionLogger
 from app.services.command_handlers import CommandHandlers
 from app.services.loop_guard import LoopGuard
 from app.services.memory import MemoryService
+from app.services.travel_companion import TravelCompanionEngine
 from app.services.write_flow_handler import WriteFlowHandler
 from app.services.workflow_engine import WorkflowEngine
 
@@ -27,6 +28,7 @@ class TelegramOrchestrator:
         self.loop_guard = LoopGuard()
         self.commands = CommandHandlers()
         self.write_flow = WriteFlowHandler()
+        self.companion = TravelCompanionEngine()
 
     async def handle_update(self, update: TelegramUpdate) -> None:
         message = update.message
@@ -98,13 +100,49 @@ class TelegramOrchestrator:
 
             await self.action_logger.log("incoming_message", chat.id, user.id, {"text": incoming_text, "update_id": update.update_id})
             await self.memory.append_user_turn(context, incoming_text)
+            pre_intent_state = self.companion.assess(context, incoming_text)
+            await self.memory.update_preferences(context, self._build_preference_updates(pre_intent_state))
+            await self.action_logger.log(
+                "travel_companion_state",
+                chat.id,
+                user.id,
+                {
+                    "stage": "pre_intent",
+                    "mood": pre_intent_state.mood,
+                    "stress": pre_intent_state.stress,
+                    "excitement": pre_intent_state.excitement,
+                    "fatigue": pre_intent_state.fatigue,
+                    "confusion": pre_intent_state.confusion,
+                    "overwhelm": pre_intent_state.overwhelm,
+                    "response_mode": pre_intent_state.response_mode,
+                    "signals": pre_intent_state.signals,
+                    "proactive_hints": pre_intent_state.proactive_hints,
+                },
+            )
             memory_summary = self.memory.summarize(context)
             intent_result = await self.llm.detect_intent(incoming_text, memory_summary)
             intent_result.intent.extracted_fields = resolve_entity_reference(context, intent_result.intent.extracted_fields)
+            companion_state = self.companion.assess(context, incoming_text, intent=intent_result.intent)
+            await self.memory.update_preferences(context, self._build_preference_updates(companion_state))
             workflow_reasoning = build_workflow_reasoning(intent_result.intent)
             await self.action_logger.log("intent_detected", chat.id, user.id, intent_result.intent.model_dump())
-            await self.action_logger.log("workflow_reasoning", chat.id, user.id, workflow_reasoning | {"context": build_context_snapshot(context)})
-            response = await self.workflow.execute(intent_result.intent)
+            await self.action_logger.log(
+                "workflow_reasoning",
+                chat.id,
+                user.id,
+                workflow_reasoning
+                | {
+                    "context": build_context_snapshot(context),
+                    "travel_companion": {
+                        "mood": companion_state.mood,
+                        "response_mode": companion_state.response_mode,
+                        "signals": companion_state.signals,
+                        "proactive_hints": companion_state.proactive_hints,
+                    },
+                },
+            )
+            response = await self.workflow.execute(intent_result.intent, companion_state=companion_state)
+            response.text = self.companion.adapt_reply(response.text, companion_state, intent=intent_result.intent)
 
             if response.memory_updates:
                 entity_type = intent_result.intent.domain or "general"
@@ -162,3 +200,16 @@ class TelegramOrchestrator:
         if message.group_chat_created or message.supergroup_chat_created or message.channel_chat_created:
             return True
         return False
+
+    def _build_preference_updates(self, state) -> dict[str, object]:
+        updates: dict[str, object] = {
+            "last_detected_mood": state.mood,
+            "last_response_mode": state.response_mode,
+        }
+        if "slow_exploration_interest" in state.signals:
+            updates["prefers_slow_exploration"] = True
+        if "weather_context" in state.signals:
+            updates["weather_sensitive"] = True
+        if "transport_context" in state.signals:
+            updates["transport_sensitive"] = True
+        return updates
