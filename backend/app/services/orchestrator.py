@@ -121,7 +121,22 @@ class TelegramOrchestrator:
                     await self.telegram.send_message(chat.id, command_reply)
                 return
 
-            link_response = self._direct_link_response(incoming_text, context)
+            try:
+                link_response = self._direct_link_response(incoming_text, context)
+            except Exception as exc:
+                await self.action_logger.log(
+                    "direct_link_exception",
+                    chat.id,
+                    user.id,
+                    {
+                        "text": incoming_text,
+                        "error": str(exc),
+                    },
+                )
+                link_response = AssistantResponse(
+                    text="Mình chưa mở link trực tiếp được ở lượt này, nhưng bạn cứ nói rõ muốn mở Maps hay mở file Sheet nào, mình sẽ chốt lại ngắn gọn hơn.",
+                )
+
             if link_response is not None:
                 await self.action_logger.log(
                     "direct_link_response",
@@ -422,11 +437,15 @@ class TelegramOrchestrator:
 
     def _resolve_recent_place(self, context, current_text: str):
         candidates = [current_text]
-        for turn in reversed(context.conversation[-6:]):
-            if turn.text:
+        conversation = getattr(context, "conversation", []) or []
+        for turn in reversed(conversation[-6:]):
+            if getattr(turn, "text", ""):
                 candidates.append(turn.text)
         for candidate in candidates:
-            place = find_place(candidate)
+            try:
+                place = find_place(candidate)
+            except Exception:
+                place = None
             if place is not None:
                 return place
         return None
