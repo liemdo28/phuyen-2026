@@ -129,8 +129,6 @@ function extractCity(text) {
  * Detect language of input text (simple heuristic)
  */
 export function detectLanguage(text) {
-  // Vietnamese: common diacritical marks and Vietnamese-specific words
-  const viPatterns = /[ăâđêôơưạảấầẩẫậắằẳẵặẹẻẽẹếềểễệỉịỏọốồổỗộớờởỡợụủứừửữựỵỷỹ]/i;
   // Japanese: hiragana/katakana/kanji range
   const jaPatterns = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/;
   // Korean: Hangul range
@@ -138,11 +136,20 @@ export function detectLanguage(text) {
   // Chinese: CJK range
   const zhPatterns = /[\u4E00-\u9FFF]/;
 
-  if (jaPatterns.test(text) || jaPatterns.test(text)) return 'ja';
+  if (jaPatterns.test(text)) return 'ja';
   if (koPatterns.test(text)) return 'ko';
   if (zhPatterns.test(text)) return 'zh';
-  if (viPatterns.test(text)) return 'vi';
-  return 'en';
+
+  // Full Vietnamese diacritics set — includes ALL tone marks (à á ã ả ạ etc. were missing before)
+  const viDiacritics = /[àáảãạăắằẳẵặâấầẩẫậđèéẻẽẹêếềểễệìíỉĩịòóỏõọôốồổỗộơớờởỡợùúủũụưứừửữựỳýỷỹỵ]/i;
+  if (viDiacritics.test(text)) return 'vi';
+
+  // No-accent Vietnamese: common words that can't be English
+  const viNoAccent = /\b(khong|muon|duoc|ngon|tuoi|biet|uong|nghi|quan|tren|duoi|trong|ngoai|truoc|nhung|cung|that|neu|thi|roi|doi|oke|vl|vcl|ez)\b/i;
+  if (viNoAccent.test(text)) return 'vi';
+
+  // Default to Vietnamese — this is a Vietnamese travel app
+  return 'vi';
 }
 
 /**
