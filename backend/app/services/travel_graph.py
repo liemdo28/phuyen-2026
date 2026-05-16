@@ -444,7 +444,7 @@ class LocationNode:
         if entity.noise_level == "quiet":
             recovery_types.append(RecoveryType.LOW_NOISE_RESTAURANT)
         if not entity.energy_fit or "low_energy" in entity.energy_fit:
-            recovery_types.append(RecoveryType.SHAVED_LOCATION)
+            recovery_types.append(RecoveryType.SHADED_LOCATION)
             is_recovery = True
         if entity.air_conditioning:
             recovery_types.append(RecoveryType.AIR_CONDITIONED)
@@ -604,7 +604,7 @@ class FatigueAccumulationModel:
         RecoveryType.QUIET_CAFE: 0.15,
         RecoveryType.CALM_BEACH: 0.20,
         RecoveryType.LOW_NOISE_RESTAURANT: 0.12,
-        RecoveryType.SHAVED_LOCATION: 0.10,
+        RecoveryType.SHADED_LOCATION: 0.10,
         RecoveryType.AIR_CONDITIONED: 0.18,
         RecoveryType.HIDDEN_LOCAL_SPOT: 0.15,
         RecoveryType.NATURE_SPOT: 0.22,
