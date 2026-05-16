@@ -1,0 +1,107 @@
+{
+  "run_id": "qa_20260516_130947",
+  "generated_at": "2026-05-16T13:09:47.249814",
+  "summary": {
+    "generated_at": "2026-05-16T13:09:47.249814",
+    "session_count": 20,
+    "violation_count": 11,
+    "pass_count": 11,
+    "fail_count": 9,
+    "zero_audit_achieved": false,
+    "total_sessions": 20,
+    "total_violations": 11,
+    "pass_rate": 55.0,
+    "overall_score": 4.5,
+    "grade": "F"
+  },
+  "dev_fix_queue": [
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "cả nhóm 8 người cần chỗ rộng",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    },
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "hết hồn sóng to vậy",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    },
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "co cho nao an ngon khong",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    },
+    {
+      "rule": "missed_food_need",
+      "severity": "HIGH",
+      "user_message": "co cho nao an ngon khong",
+      "reason": "User đang hỏi ăn/uống nhưng response không đưa hướng xử lý phù hợp.",
+      "fix_suggestion": "Ưu tiên gợi ý ăn/uống gần, ít lựa chọn, dễ đi.",
+      "replayable": true
+    },
+    {
+      "rule": "missed_location_guidance",
+      "severity": "MEDIUM",
+      "user_message": "tìm quán ăn gần đây",
+      "reason": "Query có yếu tố vị trí nhưng response không điều hướng theo địa điểm.",
+      "fix_suggestion": "Xin vị trí hoặc địa điểm cụ thể khi thiếu geolocation.",
+      "replayable": true
+    },
+    {
+      "rule": "missed_food_need",
+      "severity": "HIGH",
+      "user_message": "chèn ơi nóng ghê",
+      "reason": "User đang hỏi ăn/uống nhưng response không đưa hướng xử lý phù hợp.",
+      "fix_suggestion": "Ưu tiên gợi ý ăn/uống gần, ít lựa chọn, dễ đi.",
+      "replayable": true
+    },
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "doi qua an gi day",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    },
+    {
+      "rule": "missed_food_need",
+      "severity": "HIGH",
+      "user_message": "doi qua an gi day",
+      "reason": "User đang hỏi ăn/uống nhưng response không đưa hướng xử lý phù hợp.",
+      "fix_suggestion": "Ưu tiên gợi ý ăn/uống gần, ít lựa chọn, dễ đi.",
+      "replayable": true
+    },
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "đi cả gia đình 5 người",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    },
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "không muốn đi xe lâu",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    },
+    {
+      "rule": "missed_location_guidance",
+      "severity": "MEDIUM",
+      "user_message": "trời mưa thì đi đâu được",
+      "reason": "Query có yếu tố vị trí nhưng response không điều hướng theo địa điểm.",
+      "fix_suggestion": "Xin vị trí hoặc địa điểm cụ thể khi thiếu geolocation.",
+      "replayable": true
+    }
+  ]
+}

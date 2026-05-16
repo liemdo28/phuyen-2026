@@ -1,0 +1,67 @@
+{
+  "run_id": "qa_20260516_132152",
+  "generated_at": "2026-05-16T13:21:52.279121",
+  "summary": {
+    "generated_at": "2026-05-16T13:21:52.279121",
+    "session_count": 20,
+    "violation_count": 6,
+    "pass_count": 14,
+    "fail_count": 6,
+    "zero_audit_achieved": false,
+    "total_sessions": 20,
+    "total_violations": 6,
+    "pass_rate": 70.0,
+    "overall_score": 7.0,
+    "grade": "B"
+  },
+  "dev_fix_queue": [
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "ờ thì cũng được",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    },
+    {
+      "rule": "missed_food_need",
+      "severity": "HIGH",
+      "user_message": "muốn ăn cơm gà",
+      "reason": "User đang hỏi ăn/uống nhưng response không đưa hướng xử lý phù hợp.",
+      "fix_suggestion": "Ưu tiên gợi ý ăn/uống gần, ít lựa chọn, dễ đi.",
+      "replayable": true
+    },
+    {
+      "rule": "missed_location_guidance",
+      "severity": "MEDIUM",
+      "user_message": "mệt quá không muốn đi đâu cả",
+      "reason": "Query có yếu tố vị trí nhưng response không điều hướng theo địa điểm.",
+      "fix_suggestion": "Xin vị trí hoặc địa điểm cụ thể khi thiếu geolocation.",
+      "replayable": true
+    },
+    {
+      "rule": "missed_location_guidance",
+      "severity": "MEDIUM",
+      "user_message": "thôi kệ đi đâu cũng được",
+      "reason": "Query có yếu tố vị trí nhưng response không điều hướng theo địa điểm.",
+      "fix_suggestion": "Xin vị trí hoặc địa điểm cụ thể khi thiếu geolocation.",
+      "replayable": true
+    },
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "mấy giờ thì mặt trời lặn",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    },
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "nắng gắt quá vào trong không",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    }
+  ]
+}

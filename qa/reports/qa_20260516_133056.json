@@ -1,0 +1,59 @@
+{
+  "run_id": "qa_20260516_133056",
+  "generated_at": "2026-05-16T13:30:56.474503",
+  "summary": {
+    "generated_at": "2026-05-16T13:30:56.474503",
+    "session_count": 20,
+    "violation_count": 5,
+    "pass_count": 15,
+    "fail_count": 5,
+    "zero_audit_achieved": false,
+    "total_sessions": 20,
+    "total_violations": 5,
+    "pass_rate": 75.0,
+    "overall_score": 7.5,
+    "grade": "B"
+  },
+  "dev_fix_queue": [
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "đi Gành Đá Đĩa lúc nào tốt nhất",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    },
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "tiêu hôm nay bao nhiêu",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    },
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "ăn sáng rồi đi mô",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    },
+    {
+      "rule": "missed_location_guidance",
+      "severity": "MEDIUM",
+      "user_message": "mệt muốn chết đi đâu cũng lười",
+      "reason": "User hỏi địa điểm nhưng response không điều hướng theo vị trí.",
+      "fix_suggestion": "Hỏi khu vực đang ở hoặc cung cấp gợi ý địa điểm cụ thể.",
+      "replayable": true
+    },
+    {
+      "rule": "missed_location_guidance",
+      "severity": "MEDIUM",
+      "user_message": "co cho nao an ngon khong",
+      "reason": "User hỏi địa điểm nhưng response không điều hướng theo vị trí.",
+      "fix_suggestion": "Hỏi khu vực đang ở hoặc cung cấp gợi ý địa điểm cụ thể.",
+      "replayable": true
+    }
+  ]
+}

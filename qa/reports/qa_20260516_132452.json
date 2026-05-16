@@ -1,0 +1,99 @@
+{
+  "run_id": "qa_20260516_132452",
+  "generated_at": "2026-05-16T13:24:52.981723",
+  "summary": {
+    "generated_at": "2026-05-16T13:24:52.981723",
+    "session_count": 20,
+    "violation_count": 10,
+    "pass_count": 12,
+    "fail_count": 8,
+    "zero_audit_achieved": false,
+    "total_sessions": 20,
+    "total_violations": 10,
+    "pass_rate": 60.0,
+    "overall_score": 5.0,
+    "grade": "F"
+  },
+  "dev_fix_queue": [
+    {
+      "rule": "missed_location_guidance",
+      "severity": "MEDIUM",
+      "user_message": "gần thôi nha đừng xa",
+      "reason": "Query có yếu tố vị trí nhưng response không điều hướng theo địa điểm.",
+      "fix_suggestion": "Xin vị trí hoặc địa điểm cụ thể khi thiếu geolocation.",
+      "replayable": true
+    },
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "lịch trình hôm nay thế nào",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    },
+    {
+      "rule": "missed_location_guidance",
+      "severity": "MEDIUM",
+      "user_message": "gan thoi ngai di",
+      "reason": "Query có yếu tố vị trí nhưng response không điều hướng theo địa điểm.",
+      "fix_suggestion": "Xin vị trí hoặc địa điểm cụ thể khi thiếu geolocation.",
+      "replayable": true
+    },
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "ăn hết 150k",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    },
+    {
+      "rule": "missed_food_need",
+      "severity": "HIGH",
+      "user_message": "ăn hết 150k",
+      "reason": "User đang hỏi ăn/uống nhưng response không đưa hướng xử lý phù hợp.",
+      "fix_suggestion": "Ưu tiên gợi ý ăn/uống gần, ít lựa chọn, dễ đi.",
+      "replayable": true
+    },
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "tiêu hôm nay bao nhiêu",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    },
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "mệt quá không muốn đi đâu cả",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    },
+    {
+      "rule": "missed_location_guidance",
+      "severity": "MEDIUM",
+      "user_message": "mệt quá không muốn đi đâu cả",
+      "reason": "Query có yếu tố vị trí nhưng response không điều hướng theo địa điểm.",
+      "fix_suggestion": "Xin vị trí hoặc địa điểm cụ thể khi thiếu geolocation.",
+      "replayable": true
+    },
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "cần chỗ ngồi thư giãn không ồn",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    },
+    {
+      "rule": "missed_food_need",
+      "severity": "HIGH",
+      "user_message": "bé đói rồi",
+      "reason": "User đang hỏi ăn/uống nhưng response không đưa hướng xử lý phù hợp.",
+      "fix_suggestion": "Ưu tiên gợi ý ăn/uống gần, ít lựa chọn, dễ đi.",
+      "replayable": true
+    }
+  ]
+}

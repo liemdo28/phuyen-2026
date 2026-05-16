@@ -1,0 +1,59 @@
+{
+  "run_id": "qa_20260516_133703",
+  "generated_at": "2026-05-16T13:37:03.445671",
+  "summary": {
+    "generated_at": "2026-05-16T13:37:03.445671",
+    "session_count": 20,
+    "violation_count": 5,
+    "pass_count": 15,
+    "fail_count": 5,
+    "zero_audit_achieved": false,
+    "total_sessions": 20,
+    "total_violations": 5,
+    "pass_rate": 75.0,
+    "overall_score": 7.5,
+    "grade": "B"
+  },
+  "dev_fix_queue": [
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "nắng gắt quá vào trong không",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    },
+    {
+      "rule": "missed_food_need",
+      "severity": "HIGH",
+      "user_message": "chèn ơi nóng ghê",
+      "reason": "User đang hỏi ăn/uống nhưng response không đưa hướng xử lý phù hợp.",
+      "fix_suggestion": "Ưu tiên gợi ý ăn/uống gần, ít lựa chọn, dễ đi.",
+      "replayable": true
+    },
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "hết hồn sóng to vậy",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    },
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "bé có thể xuống biển không",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    },
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "đi bộ thôi không muốn lấy xe",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    }
+  ]
+}

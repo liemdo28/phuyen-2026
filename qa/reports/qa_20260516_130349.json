@@ -1,0 +1,43 @@
+{
+  "run_id": "qa_20260516_130349",
+  "generated_at": "2026-05-16T13:03:49.296114",
+  "summary": {
+    "generated_at": "2026-05-16T13:03:49.296114",
+    "session_count": 10,
+    "violation_count": 3,
+    "pass_count": 7,
+    "fail_count": 3,
+    "zero_audit_achieved": false,
+    "total_sessions": 10,
+    "total_violations": 3,
+    "pass_rate": 70.0,
+    "overall_score": 8.5,
+    "grade": "A"
+  },
+  "dev_fix_queue": [
+    {
+      "rule": "missed_location_guidance",
+      "severity": "MEDIUM",
+      "user_message": "trời mưa thì đi đâu được",
+      "reason": "Query có yếu tố vị trí nhưng response không điều hướng theo địa điểm.",
+      "fix_suggestion": "Xin vị trí hoặc địa điểm cụ thể khi thiếu geolocation.",
+      "replayable": true
+    },
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "không muốn đi xe lâu",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    },
+    {
+      "rule": "missed_location_guidance",
+      "severity": "MEDIUM",
+      "user_message": "gần thôi nha đừng xa",
+      "reason": "Query có yếu tố vị trí nhưng response không điều hướng theo địa điểm.",
+      "fix_suggestion": "Xin vị trí hoặc địa điểm cụ thể khi thiếu geolocation.",
+      "replayable": true
+    }
+  ]
+}
