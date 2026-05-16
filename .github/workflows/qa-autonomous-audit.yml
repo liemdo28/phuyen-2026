@@ -1,0 +1,88 @@
+name: Autonomous QA Audit
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  qa-audit:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run autonomous QA discovery + replay audit
+        run: |
+          python qa/run_qa.py --audit-reports --mock --max-scenarios 80
+
+      - name: Upload QA artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: autonomous-qa-artifacts
+          path: |
+            qa/reports/
+            qa/fix_queue/
+            qa/history/
+            qa/regression/results/
+
+      - name: Find latest autonomous QA summary
+        id: summary
+        shell: bash
+        run: |
+          set -euo pipefail
+          SUMMARY_FILE="$(ls -1t qa/history/autonomous_qa_*.json | head -n 1)"
+          echo "summary_file=$SUMMARY_FILE" >> "$GITHUB_OUTPUT"
+          python - <<'PY' "$SUMMARY_FILE" >> "$GITHUB_OUTPUT"
+import json, sys
+path = sys.argv[1]
+data = json.load(open(path, encoding="utf-8"))
+print(f"run_id={data['run_id']}")
+print(f"artifact_count={data['artifact_count']}")
+print(f"scenario_count={data['scenario_count']}")
+print(f"unresolved_audit_count={data['unresolved_audit_count']}")
+print(f"zero_unresolved={'true' if data['zero_unresolved'] else 'false'}")
+print(f"regression_free={'true' if data['regression'].get('regression_free', False) else 'false'}")
+PY
+
+      - name: Add GitHub step summary
+        run: |
+          {
+            echo "## Autonomous QA Audit"
+            echo
+            echo "- Run ID: ${{ steps.summary.outputs.run_id }}"
+            echo "- Artifacts discovered: ${{ steps.summary.outputs.artifact_count }}"
+            echo "- Scenarios replayed: ${{ steps.summary.outputs.scenario_count }}"
+            echo "- Unresolved audit items: ${{ steps.summary.outputs.unresolved_audit_count }}"
+            echo "- Zero unresolved: ${{ steps.summary.outputs.zero_unresolved }}"
+            echo "- Regression free: ${{ steps.summary.outputs.regression_free }}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Comment on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = [
+              "## Autonomous QA Audit",
+              "",
+              `- Run ID: ${{ steps.summary.outputs.run_id }}`,
+              `- Artifacts discovered: ${{ steps.summary.outputs.artifact_count }}`,
+              `- Scenarios replayed: ${{ steps.summary.outputs.scenario_count }}`,
+              `- Unresolved audit items: ${{ steps.summary.outputs.unresolved_audit_count }}`,
+              `- Zero unresolved: ${{ steps.summary.outputs.zero_unresolved }}`,
+              `- Regression free: ${{ steps.summary.outputs.regression_free }}`,
+              "",
+              "Artifacts uploaded from `qa/reports`, `qa/fix_queue`, `qa/history`, and `qa/regression/results`."
+            ].join("\n");
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body,
+            });
