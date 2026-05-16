@@ -190,7 +190,11 @@ def _heuristic_companion_reply(text: str) -> str:
     except Exception:
         pass  # engines unavailable — fall through to keyword handlers
 
-    t = text.lower()
+    t = text.lower().strip()
+
+    # English greeting → respond in Vietnamese only
+    if t in ("hello", "hi", "hey", "hello!", "hi!", "hey!") or t.startswith(("hello ", "hi ", "hey ")):
+        return "Chào bạn 😊 Mình là Mi — bạn đồng hành Phú Yên. Hỏi gì cũng được nhé!"
 
     # Miền Tây / Southern dialect detection
     _mien_tay = any(w in t for w in [

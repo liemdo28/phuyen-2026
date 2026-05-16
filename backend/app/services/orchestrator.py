@@ -230,15 +230,27 @@ class TelegramOrchestrator:
                     )
                 return
 
-            # FAST PATH: Greeting — short warm reply, never touches LLM
+            # ── Member lookup (used by greeting + name fast-paths + LLM guidance) ──
+            _member = None
+            try:
+                from app.mi.identity import lookup_member, build_greeting_for_member, build_member_guidance
+                _member = lookup_member(telegram_id=user.id if user else None)
+            except Exception:
+                pass
+
+            # FAST PATH: Pure greeting — member-aware, bypasses LLM entirely
             _GREETING_PATTERNS = (
                 "chào em", "chao em", "chào bạn", "chao ban",
                 "xin chào", "xin chao",
-                "hello mi", "hi mi", "chào mi", "chao mi",
-                "hey mi", "hey bạn", "alo mi", "alo bạn",
+                "hello mi", "hi mi", "hello", "hi",
+                "chào mi", "chao mi",
+                "hey mi", "hey bạn", "alo mi", "alo bạn", "alo",
             )
             if any(p in _t_lower for p in _GREETING_PATTERNS) and len(_t_lower) < 40:
-                _greet_reply = "Chào bạn 😊 Mình là Mi — bạn đồng hành Phú Yên của nhóm. Hỏi gì cũng được nhé!"
+                if _member:
+                    _greet_reply = build_greeting_for_member(_member)
+                else:
+                    _greet_reply = "Chào bạn 😊 Mình là Mi — bạn đồng hành Phú Yên của nhóm. Hỏi gì cũng được nhé!"
                 if decision.allow_reply:
                     await self.telegram.send_message(chat.id, _greet_reply)
                 return
@@ -253,7 +265,10 @@ class TelegramOrchestrator:
                 "bạn tên", "ban ten", "em tên", "em ten",
             )
             if any(p in _t_lower for p in _NAME_PATTERNS):
-                _name_reply = "Mình là Mi 😊 Bạn đồng hành chuyến Phú Yên của nhóm — hỏi gì cứ hỏi nhé!"
+                if _member:
+                    _name_reply = f"Em là Mi 😊 Bạn đồng hành chuyến Phú Yên của nhóm — {_member.mi_calls_them} cần gì cứ hỏi em nhé!"
+                else:
+                    _name_reply = "Mình là Mi 😊 Bạn đồng hành chuyến Phú Yên của nhóm — hỏi gì cứ hỏi nhé!"
                 if decision.allow_reply:
                     await self.telegram.send_message(chat.id, _name_reply)
                 return
@@ -594,6 +609,7 @@ class TelegramOrchestrator:
                     calm_decision,
                     recovery_plan,
                     message_analysis=message_analysis,
+                    trip_member=_member,
                 )
                 # Phase 5: enhance with Travel OS
                 response.text = self.companion.adapt_reply(response.text, companion_state, intent=intent_result.intent)
@@ -749,12 +765,22 @@ class TelegramOrchestrator:
         calm_decision,
         recovery_plan,
         message_analysis: VietnameseMessageAnalysis | None = None,
+        trip_member=None,
     ) -> AssistantResponse:
         trip_state = self.trip_context.get_state()
         trip_context_str = self.trip_context.format_for_prompt(trip_state, companion_state=companion_state)
 
         # ── Human-like companion context layers ──────────────────────────────
         now = datetime.now()
+
+        # 0. Member pronoun guidance — MUST be first so LLM always uses correct anh/chị/em
+        member_guidance = ""
+        if trip_member:
+            try:
+                from app.mi.identity import build_member_guidance
+                member_guidance = build_member_guidance(trip_member)
+            except Exception:
+                pass
 
         # 1. User Memory Profile — knows food prefs, places visited, movement history
         user_profile = load_profile(context.preferences)
@@ -798,8 +824,9 @@ class TelegramOrchestrator:
         )
         behavior_context = build_prompt_context(message_analysis) if message_analysis else ""
 
-        # Combine all context layers — most specific first
+        # Combine all context layers — most specific first (member pronoun rule goes first)
         interaction_guidance = "\n\n".join(filter(None, [
+            member_guidance,   # FIRST: pronoun rule for this specific person
             memory_context,
             chill_context,
             flow_context,
