@@ -66,6 +66,8 @@ class FixQueueManager:
     def save(self, run_id: str, items: list[FixQueueItem]) -> tuple[str, str]:
         json_path = self.root_dir / f"{run_id}.json"
         md_path = self.root_dir / f"{run_id}.md"
+        latest_json_path = self.root_dir / "latest.json"
+        latest_md_path = self.root_dir / "latest.md"
 
         json_payload = {
             "run_id": run_id,
@@ -73,7 +75,8 @@ class FixQueueManager:
             "open_items": [asdict(item) for item in items],
             "open_count": len(items),
         }
-        json_path.write_text(json.dumps(json_payload, ensure_ascii=False, indent=2), encoding="utf-8")
+        json_text = json.dumps(json_payload, ensure_ascii=False, indent=2)
+        json_path.write_text(json_text, encoding="utf-8")
 
         lines = [
             f"# Fix Queue — {run_id}",
@@ -94,5 +97,14 @@ class FixQueueManager:
                     "",
                 ]
             )
-        md_path.write_text("\n".join(lines), encoding="utf-8")
+        md_text = "\n".join(lines)
+        md_path.write_text(md_text, encoding="utf-8")
+        latest_json_path.write_text(json_text, encoding="utf-8")
+        latest_md_path.write_text(md_text, encoding="utf-8")
         return str(json_path), str(md_path)
+
+    def load_latest(self) -> dict[str, object] | None:
+        latest_json_path = self.root_dir / "latest.json"
+        if not latest_json_path.exists():
+            return None
+        return json.loads(latest_json_path.read_text(encoding="utf-8"))

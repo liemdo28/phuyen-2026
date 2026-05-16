@@ -13,6 +13,7 @@ Usage:
     python qa/run_qa.py --regression           # Run regression tests only
     python qa/run_qa.py --audit-reports        # Discover + replay repo QA artifacts
     python qa/run_qa.py --discover-only        # Print discovered QA artifacts only
+    python qa/run_qa.py --latest-fix-queue     # Print latest unresolved fix queue
     python qa/run_qa.py --mock                 # Use mock AI (no backend needed)
     python qa/run_qa.py --demo                 # Demo mode: show sample violations
 """
@@ -206,6 +207,7 @@ def main():
     parser.add_argument("--regression", action="store_true", help="Run regression tests only")
     parser.add_argument("--audit-reports", action="store_true", help="Discover QA artifacts in repo, replay them, and generate fix queue")
     parser.add_argument("--discover-only", action="store_true", help="Only discover QA artifacts and print manifest")
+    parser.add_argument("--latest-fix-queue", action="store_true", help="Print the latest unresolved fix queue snapshot")
     parser.add_argument("--max-scenarios", type=int, default=100, help="Max discovered scenarios to replay during --audit-reports")
     parser.add_argument("--mock", action="store_true", help="Use mock AI (no backend needed)")
     parser.add_argument("--demo", action="store_true", help="Run demo mode")
@@ -230,6 +232,27 @@ def main():
         print(f"   Scenarios: {len(scenarios)}")
         for artifact in artifacts[:20]:
             print(f"   - [{artifact.report_type}] {artifact.relative_path}")
+        return
+
+    if args.latest_fix_queue:
+        from qa.fix_queue import FixQueueManager
+
+        manager = FixQueueManager(os.path.dirname(os.path.abspath(__file__)) + "/fix_queue")
+        payload = manager.load_latest()
+        if payload is None:
+            print("No latest fix queue found.")
+            return
+
+        print("\n🩹 Latest Fix Queue")
+        print(f"   Run ID: {payload.get('run_id')}")
+        print(f"   Generated: {payload.get('generated_at')}")
+        print(f"   Open count: {payload.get('open_count')}")
+        for item in payload.get("open_items", [])[:10]:
+            print(
+                "   - "
+                f"[{item.get('severity')}] {item.get('rule')} :: "
+                f"{item.get('user_message')}"
+            )
         return
 
     if args.audit_reports:

@@ -46,7 +46,7 @@ services:
     region: singapore
     dockerfilePath: ./Dockerfile
     dockerContext: .
-    schedule: "*/4 * * * *"
+    schedule: "*/3 * * * *"
     autoDeployTrigger: commit
     startCommand: "sh /app/qa/run_autonomous_qa.sh"
     disk:
