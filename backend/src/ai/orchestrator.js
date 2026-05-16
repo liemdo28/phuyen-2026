@@ -117,30 +117,42 @@ async function handleWeatherIntent(text, lang, data) {
 }
 
 async function handleFoodIntent(text, lang, userContext, data) {
-  const { nearbyPlaces } = data;
-  const location = getSessionContext(data.userId)?.tripContext?.currentLocation;
+  const loc = getSession(data.userId)?.tripContext?.currentLocation;
+  const places = data.nearbyPlaces || [];
+
+  const placesText = places.slice(0, 6).map(p =>
+    `- ${p.name} (${p.area}): ${p.type}, ~${Math.round(p.price / 1000)}k/người, cách ${p.distance?.toFixed(1) ?? '?'}km, giờ mở ${p.openHours}${p.note ? `, ghi chú: ${p.note}` : ''}`
+  ).join('\n') || 'Không có dữ liệu quán gần đây';
 
   const prompt = [
     `User query: "${text}"`,
-    `User preferences: ${userContext}`,
-    `Current location: ${location ? `${location.name} (${location.lat}, ${location.lon})` : 'not specified'}`,
-    `Nearby places: ${nearbyPlaces ? JSON.stringify(nearbyPlaces) : 'not available'}`,
     `Language: ${lang}`,
+    loc
+      ? `User GPS location: ${loc.name} (lat ${loc.lat}, lon ${loc.lon}) — dùng distance để ưu tiên quán gần nhất`
+      : `User GPS: chưa chia sẻ — dùng quán ở Tuy Hòa làm mặc định`,
+    `Database quán (CHỈ dùng những quán này, KHÔNG bịa thêm):\n${placesText}`,
+    `User preferences: ${userContext}`,
   ].join('\n');
 
   return await ai.complete(prompt, FOOD_RECOMMENDATION_PROMPT);
 }
 
 async function handleNearbyIntent(text, lang, userContext, data) {
-  const { nearbyPlaces } = data;
-  const location = getSessionContext(data.userId)?.tripContext?.currentLocation;
+  const loc = getSession(data.userId)?.tripContext?.currentLocation;
+  const places = data.nearbyPlaces || [];
+
+  const placesText = places.slice(0, 8).map(p =>
+    `- ${p.name} (${p.area}): ${p.type}, ~${Math.round(p.price / 1000)}k/người, cách ${p.distance?.toFixed(1) ?? '?'}km, giờ mở ${p.openHours}${p.note ? `, ${p.note}` : ''}`
+  ).join('\n') || 'Không có dữ liệu';
 
   const prompt = [
     `User query: "${text}"`,
-    `User preferences: ${userContext}`,
-    `Current location: ${location ? `${location.name} (${location.lat}, ${location.lon})` : 'not specified'}`,
-    `Nearby places database: ${nearbyPlaces ? JSON.stringify(nearbyPlaces) : 'not available'}`,
     `Language: ${lang}`,
+    loc
+      ? `User GPS: ${loc.name} (lat ${loc.lat}, lon ${loc.lon})`
+      : `User GPS: chưa chia sẻ`,
+    `Địa điểm gần (sắp xếp theo khoảng cách, CHỈ dùng list này):\n${placesText}`,
+    `User preferences: ${userContext}`,
   ].join('\n');
 
   return await ai.complete(prompt, HANDLE_NEARBY_PROMPT);
@@ -267,12 +279,13 @@ async function gatherAdditionalContext(context, intent, userId) {
       } catch (e) { /* ignore */ }
     }
 
-    // Get nearby places if location available
-    if (context.location || intent.subIntents?.includes('nearby')) {
-      const lat = context.location?.lat || 13.0955;
-      const lon = context.location?.lon || 109.3028;
+    // Always load nearby places — use GPS if available, else default to Tuy Hoa center
+    if (['food', 'nearby', 'general', 'local'].includes(intent.primary)) {
+      const loc = getSession(userId)?.tripContext?.currentLocation;
+      const lat = loc?.lat || context.location?.lat || 13.0955;
+      const lon = loc?.lon || context.location?.lon || 109.3028;
       try {
-        data.nearbyPlaces = await placesService.getNearbyPlaces(lat, lon);
+        data.nearbyPlaces = await placesService.getNearbyPlaces(lat, lon, 'all', 12);
       } catch (e) { /* ignore */ }
     }
   } catch (e) {
