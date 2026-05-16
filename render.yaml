@@ -8,6 +8,11 @@ services:
     dockerContext: .
     healthCheckPath: /health
     autoDeployTrigger: commit
+    dockerBuildArgs:
+      - name: GIT_COMMIT
+        value: $RENDER_GIT_COMMIT
+      - name: BUILD_TIME
+        value: $RENDER_BUILD_TIME
     disk:
       name: phuyen-data
       mountPath: /data

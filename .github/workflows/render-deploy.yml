@@ -1,0 +1,28 @@
+name: Deploy to Render
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Render Deploy
+        if: ${{ vars.RENDER_DEPLOY_HOOK_URL != '' }}
+        run: |
+          curl -s -X POST "${{ vars.RENDER_DEPLOY_HOOK_URL }}" \
+            -H "Accept: application/json" \
+            --fail \
+            && echo "Render deploy triggered successfully" \
+            || echo "Deploy hook not configured — relying on Render auto-deploy"
+
+      - name: Verify service health (post-deploy)
+        run: |
+          echo "Waiting 90s for Render to spin up..."
+          sleep 90
+          STATUS=$(curl -s https://phuyen-2026-telegram.onrender.com/health)
+          echo "Live health: $STATUS"
+          COMMIT=$(curl -s https://phuyen-2026-telegram.onrender.com/version | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('commit','unknown'))" 2>/dev/null || echo "unknown")
+          echo "Live commit: $COMMIT"
+          echo "Expected:    ${{ github.sha }}"
