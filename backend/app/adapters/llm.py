@@ -136,10 +136,19 @@ def _parse_companion_response(raw: str) -> CompanionReply:
 def _heuristic_companion_reply(text: str) -> str:
     """
     Fallback when OpenAI is unavailable.
-    Uses the intelligence patterns for richer matching.
-    NOTE: Always responds in Vietnamese regardless of input language.
+    Mi persona — always Vietnamese, always warm, never robotic.
     """
     t = text.lower()
+
+    # Miền Tây / Southern dialect detection
+    _mien_tay = any(w in t for w in [
+        "hen", "nhen", "dzậy", "dzô", "vậy nhen", "thôi nha", "ổng", "bả", "cái này nè",
+    ])
+
+    # Gen Z detection
+    _gen_z = any(w in t for w in [
+        "quẩy", "phê", "chill", "hype", "oke bạn ei", "oke nha", "siuuu", "đỉnh", "xịn sò",
+    ])
 
     # Child water safety — CRITICAL, must check before anything else
     child_water = any(w in t for w in [
@@ -249,10 +258,28 @@ def _heuristic_companion_reply(text: str) -> str:
     ]):
         return "Hôm nay mình gợi ý: sáng đi biển sớm, trưa nghỉ + ăn hải sản, chiều cafe hoặc chụp ảnh, tối đi dạo phố. Đang ở khu nào để mình chỉ cụ thể hơn?"
 
+    # Gen Z — quẩy/hype/phê
+    if _gen_z or any(w in t for w in ["quẩy", "phê", "hype", "đỉnh kout", "siuuu"]):
+        return "Phú Yên quẩy kiểu gì bây giờ 😄 Biển chiều? Hải sản tối? Hay tìm chỗ chill ngắm hoàng hôn? Bạn chọn đi mình chỉ ngay!"
+
     # Excitement / exploration
     if any(w in t for w in [
         "hào hứng", "hype", "thích quá", "muốn khám phá", "đi đâu vui",
     ]):
         return "Mood tốt đấy! Ghé Gành Đá Đĩa hoặc Đầm Ô Loan — 2 địa điểm đỉnh nhất Phú Yên. Mình chỉ cụ thể hơn nếu bạn cho biết đang ở đâu nhé."
 
-    return "Mình đây, cần gì cứ nói nhé!"
+    # Older user / formal tone (cô/chú/bác)
+    if any(w in t for w in ["cô cần", "chú cần", "bác cần", "cô muốn", "chú muốn", "bác muốn"]):
+        if any(w in t for w in ["quán ăn", "ăn", "nhà hàng"]):
+            return "Dạ mình gợi ý vài chỗ gia đình ăn được nhé — Nhà hàng Hải Sản Sông Cầu tươi ngon, hoặc các quán Bún Cá Ngừ trong trung tâm Tuy Hòa, yên tĩnh và phù hợp cả nhà. Cô/chú đang ở khu nào để mình tính đường cho tiện ạ?"
+        return "Dạ cô/chú/bác cần gì mình hỗ trợ ngay nhé. Cho mình biết đang ở đâu để gợi ý phù hợp ạ."
+
+    # Miền Tây warmth
+    if _mien_tay:
+        return "Oke nhen! Bạn cần gì mình lo liền — hỏi thêm đi, mình ở đây nè 😊"
+
+    # Name query
+    if any(w in t for w in ["mi là ai", "tên gì", "bạn là ai", "mi tên gì", "ai vậy"]):
+        return "Mình là Mi — bạn đồng hành chuyến Phú Yên của bạn 😊 Cần gì cứ hỏi mình nhé!"
+
+    return "Mình đây — cần gì cứ nói nhé! 😊"

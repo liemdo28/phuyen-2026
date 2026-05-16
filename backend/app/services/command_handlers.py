@@ -84,7 +84,7 @@ class CommandHandlers:
     async def _start(self, message) -> str:
         first_name = message.from_user.first_name or "bạn"
         lines = [
-            f"👋 Xin chào {first_name}! Mình là trợ lý chuyến Phú Yên 2026.",
+            f"👋 Xin chào {first_name}! Mình là Mi — bạn đồng hành chuyến Phú Yên 2026 của bạn 😊",
             "",
             "💰 Ghi chi tiêu — nhắn tự nhiên:",
             "• 500k ăn tối | 1.5tr tiền phòng | 24/5 - 300k xăng",
