@@ -8,57 +8,81 @@ from app.models.domain import UserContext
 from app.schemas.assistant import AssistantIntent
 
 STRESS_MARKERS = [
-    "mệt",
-    "roi",
-    "rối",
-    "không biết",
-    "ko biết",
-    "nhiều quá",
-    "khó chọn",
-    "khó quá",
-    "kẹt xe",
-    "mưa quá",
+    "mệt", "roi", "rối", "không biết", "ko biết",
+    "nhiều quá", "khó chọn", "khó quá", "kẹt xe", "mưa quá",
+    # Intelligence graph expansion
+    "stress", "stress quá", "nổ đầu", "loạn não", "rối tung", "rối cả lên",
+    "không biết phải làm sao", "điên rồi", "bực quá", "ức chế",
+    "căng thẳng", "áp lực", "choáng ngợp", "ngộp",
+    "đau đầu quá", "nhức đầu",
 ]
 CONFUSION_MARKERS = [
-    "đi đâu",
-    "ăn gì",
-    "nên đi",
-    "nên ăn",
-    "sao giờ",
-    "không biết",
-    "làm sao",
+    "đi đâu", "ăn gì", "nên đi", "nên ăn", "sao giờ", "không biết", "làm sao",
+    # Intelligence graph expansion
+    "không biết phải đi đâu", "không biết ăn gì", "không biết chọn",
+    "khó quá không chọn được", "rối quá", "nhiều lựa chọn quá",
+    "sao bây giờ", "bây giờ sao đây", "phải làm sao", "làm sao bây giờ",
+    "đi đâu bây giờ", "ăn gì bây giờ", "nên làm gì", "nên đi đâu",
 ]
 EXCITEMENT_MARKERS = [
-    "wow",
-    "đẹp",
-    "chill",
-    "sunset",
-    "hoàng hôn",
-    "check-in",
-    "sống ảo",
-    "hào hứng",
-    "thích quá",
+    "wow", "đẹp", "chill", "sunset", "hoàng hôn", "check-in",
+    "sống ảo", "hào hứng", "thích quá",
+    # Intelligence graph expansion
+    "hype", "phấn khích", "thích phết", "mê quá", "đỉnh quá",
+    "ngầu quá", "xịn quá", "tuyệt quá", "trời ơi đẹp",
+    "muốn sống ở đây luôn", "chill quá", "vui quá", "sướng quá",
+    "tan chảy", "mlem mlem", "ngon quá",
 ]
 FATIGUE_MARKERS = [
-    "buồn ngủ",
-    "đuối",
-    "mệt",
-    "kiệt sức",
-    "ngủ thôi",
+    "buồn ngủ", "đuối", "mệt", "kiệt sức", "ngủ thôi",
+    # Intelligence graph expansion — sarcasm-scaled fatigue
+    "mệt xỉu", "mệt muốn chết", "hết pin", "hết năng lượng",
+    "không còn sức", "đuối quá", "rã rời", "bã người", "bở người",
+    "die rồi", "chết rồi", "sắp ngất", "mệt lắm", "buồn ngủ quá",
+    "ngủ gật", "không muốn làm gì", "lười quá", "ngại quá",
+    "cần nghỉ", "muốn nghỉ", "nghỉ tí", "nằm xỉu", "đi healing",
+    "muốn reset", "recharge", "hết xăng", "não lag", "lag não",
+    "đơ người", "đơ hết rồi",
 ]
 RELAXED_MARKERS = [
-    "cafe",
-    "cà phê",
-    "chụp ảnh",
-    "chụp hình",
-    "ngắm",
-    "thảnh thơi",
+    "cafe", "cà phê", "chụp ảnh", "chụp hình", "ngắm", "thảnh thơi",
+    # Intelligence graph expansion
+    "thư giãn", "nghỉ ngơi", "relax", "thả lỏng", "không vội",
+    "healing", "me time", "tự do", "thoải mái",
+    "ngồi cafe", "ngồi ngắm biển", "chill nhẹ", "nhẹ nhàng thôi",
 ]
-WEATHER_MARKERS = ["mưa", "nắng", "thời tiết", "gió", "giông"]
-TRANSPORT_MARKERS = ["grab", "taxi", "kẹt xe", "đường", "di chuyển"]
-PHOTO_MARKERS = ["cafe", "cà phê", "ảnh", "hình", "sunset", "hoàng hôn", "view"]
-LOCATION_CHANGE_MARKERS = ["gần đây", "đổi chỗ", "chỗ khác", "quán khác", "đi đâu", "qua đâu"]
-FOOD_MARKERS = ["ăn", "quán", "cafe", "cà phê", "nhà hàng", "bún", "phở", "hải sản"]
+WEATHER_MARKERS = [
+    "mưa", "nắng", "thời tiết", "gió", "giông",
+    # Intelligence graph expansion
+    "nóng quá", "nóng muốn chết", "nóng vãi", "oi bức", "nắng gắt",
+    "mưa to", "mưa như trút", "biển động", "sóng to", "bão",
+    "trời đẹp", "mát mẻ", "trời trong",
+]
+TRANSPORT_MARKERS = [
+    "grab", "taxi", "kẹt xe", "đường", "di chuyển",
+    # Intelligence graph expansion
+    "không muốn đi xa", "ngại đi xa", "lười di chuyển",
+    "gần thôi", "gần đây thôi", "đi bộ thôi",
+]
+PHOTO_MARKERS = [
+    "cafe", "cà phê", "ảnh", "hình", "sunset", "hoàng hôn", "view",
+    # Intelligence graph expansion
+    "chụp ảnh", "chụp hình", "sống ảo", "check-in", "instagram",
+    "golden hour", "bình minh", "ánh sáng đẹp", "cảnh đẹp",
+]
+LOCATION_CHANGE_MARKERS = [
+    "gần đây", "đổi chỗ", "chỗ khác", "quán khác", "đi đâu", "qua đâu",
+    # Intelligence graph expansion
+    "chỗ vắng", "tránh đông", "chỗ ít người", "chỗ yên tĩnh",
+    "không muốn ở đây", "đi chỗ khác thôi",
+]
+FOOD_MARKERS = [
+    "ăn", "quán", "cafe", "cà phê", "nhà hàng", "bún", "phở", "hải sản",
+    # Intelligence graph expansion
+    "đói", "thèm ăn", "kiếm gì ăn", "ăn gì", "quán ngon",
+    "đặc sản", "ẩm thực", "food tour", "nhậu", "bia",
+    "bún cá", "bánh căn", "tôm hùm", "cá ngừ", "sò huyết",
+]
 
 
 @dataclass

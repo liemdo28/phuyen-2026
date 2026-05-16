@@ -46,6 +46,7 @@ from app.services.action_logger import ActionLogger
 from app.services.command_handlers import CommandHandlers
 from app.services.loop_guard import LoopGuard
 from app.services.memory import MemoryService
+from app.intelligence.analyzer import VietnameseMessageAnalysis, analyze_message, build_prompt_context
 from app.services.maps_service import build_telegram_keyboard, find_place
 from app.services.sheet_mapping import TRAVEL_MAPPINGS
 from app.services.sheet_query import extract_query_params
@@ -223,16 +224,16 @@ class TelegramOrchestrator:
             # Detect location intent: "mở quán hải sản", "maps", "đường tới bãi xép", etc.
             location_intent = await self.location_intel.detect_intent(
                 incoming_text,
-                user_lat=user_lat or context.get("last_lat"),
-                user_lon=user_lon or context.get("last_lon"),
+                user_lat=user_lat or context.preferences.get("last_lat"),
+                user_lon=user_lon or context.preferences.get("last_lon"),
             )
             if location_intent.is_location_intent and incoming_text.strip():
                 try:
                     # Search indexed locations
                     results = await self.location_intel.search(
                         query=location_intent.query,
-                        user_lat=location_intent.user_lat or context.get("last_lat"),
-                        user_lon=location_intent.user_lon or context.get("last_lon"),
+                        user_lat=location_intent.user_lat or context.preferences.get("last_lat"),
+                        user_lon=location_intent.user_lon or context.preferences.get("last_lon"),
                         category=location_intent.category or None,
                         on_route=location_intent.on_route or None,
                         child_safe=location_intent.child_safe,
@@ -321,6 +322,36 @@ class TelegramOrchestrator:
             await self.action_logger.log("incoming_message", chat.id, user.id, {"text": incoming_text, "update_id": update.update_id})
             await self.memory.append_user_turn(context, incoming_text)
 
+            # Vietnamese Intelligence Graph — deep cultural / behavioral analysis
+            message_analysis = analyze_message(incoming_text)
+            await self.action_logger.log(
+                "intelligence_analysis",
+                chat.id,
+                user.id,
+                {
+                    "dialect": message_analysis.dialect,
+                    "dominant_emotion": message_analysis.dominant_emotion,
+                    "fatigue": message_analysis.fatigue,
+                    "stress": message_analysis.stress,
+                    "hunger": message_analysis.hunger,
+                    "excitement": message_analysis.excitement,
+                    "confusion": message_analysis.confusion,
+                    "recovery_need": message_analysis.recovery_need,
+                    "group_type": message_analysis.group_type,
+                    "movement_tolerance": message_analysis.movement_tolerance,
+                    "crowd_tolerance": message_analysis.crowd_tolerance,
+                    "max_distance_km": message_analysis.max_distance_km,
+                    "travel_intents": message_analysis.travel_intents,
+                    "food_types": message_analysis.food_types,
+                    "meal_time": message_analysis.meal_time,
+                    "is_drinking": message_analysis.is_drinking,
+                    "weather_action": message_analysis.weather_action,
+                    "context_tags": message_analysis.context_tags,
+                    "routing_hints": message_analysis.routing_hints,
+                    "sarcasm_detected": message_analysis.sarcasm_detected,
+                },
+            )
+
             # Emotional state assessment (TravelCompanionEngine)
             pre_intent_state = self.companion.assess(context, incoming_text)
             await self.memory.update_preferences(context, self._build_preference_updates(pre_intent_state))
@@ -407,7 +438,7 @@ class TelegramOrchestrator:
             )
 
             if _is_companion_mode(intent_result.intent):
-                # Travel/chat/general → OpenAI with trip context + emotional state
+                # Travel/chat/general → OpenAI with trip context + emotional state + intelligence graph
                 response = await self._companion_reply(
                     incoming_text,
                     context,
@@ -415,6 +446,7 @@ class TelegramOrchestrator:
                     travel_brain_state,
                     calm_decision,
                     recovery_plan,
+                    message_analysis=message_analysis,
                 )
                 # Phase 5: enhance with Travel OS
                 response.text = self.companion.adapt_reply(response.text, companion_state, intent=intent_result.intent)
@@ -561,15 +593,28 @@ class TelegramOrchestrator:
             )
             return self._neutral_civilization_defaults(companion_state)
 
-    async def _companion_reply(self, message_text: str, context, companion_state, travel_brain_state, calm_decision, recovery_plan) -> AssistantResponse:
+    async def _companion_reply(
+        self,
+        message_text: str,
+        context,
+        companion_state,
+        travel_brain_state,
+        calm_decision,
+        recovery_plan,
+        message_analysis: VietnameseMessageAnalysis | None = None,
+    ) -> AssistantResponse:
         trip_state = self.trip_context.get_state()
         trip_context_str = self.trip_context.format_for_prompt(trip_state, companion_state=companion_state)
-        interaction_guidance = self._build_companion_interaction_guidance(
+        # Build interaction guidance: TravelBrain context + Vietnamese Intelligence Graph
+        brain_guidance = self._build_companion_interaction_guidance(
             travel_brain_state,
             calm_decision,
             recovery_plan,
         )
+        behavior_context = build_prompt_context(message_analysis) if message_analysis else ""
+        interaction_guidance = "\n\n".join(filter(None, [brain_guidance, behavior_context]))
         conversation_history = _context_to_messages(context)
+
         companion = await self.llm.generate_companion_reply(
             message_text,
             conversation_history,

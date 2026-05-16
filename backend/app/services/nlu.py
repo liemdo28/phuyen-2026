@@ -14,7 +14,23 @@ DOMAIN_KEYWORDS = {
     "task": ["task", "deadline", "overdue", "việc", "công việc", "kitchen", "todo", "chưa xong"],
     "inventory": ["inventory", "tồn kho", "kho", "stock"],
     "revenue": ["doanh thu", "revenue", "sales", "bán hàng"],
-    "travel": ["trời", "ăn ngon", "đi đâu", "cafe", "quán", "lịch trình", "đà lạt", "nearby", "gần đây", "mở khuya", "chill"],
+    "travel": [
+        # Original
+        "trời", "ăn ngon", "đi đâu", "cafe", "quán", "lịch trình", "đà lạt", "nearby", "gần đây", "mở khuya", "chill",
+        # Intelligence graph expansion — rich travel signals
+        "biển", "bãi biển", "gành đá đĩa", "mũi điện", "đầm ô loan", "hòn yến", "bãi xép",
+        "tham quan", "khám phá", "du lịch", "view", "cảnh đẹp", "check-in",
+        "ăn gì", "ăn ở đâu", "kiếm gì ăn", "quán ngon", "đặc sản",
+        "hải sản", "bún cá", "bánh căn", "tôm hùm", "cá ngừ",
+        "nhậu", "bia", "quán nhậu", "pub", "bar",
+        "healing", "relax", "thư giãn", "nghỉ ngơi",
+        "mệt", "đói", "đói rồi", "đói quá",
+        "mưa", "nắng", "nóng", "thời tiết",
+        "sunset", "hoàng hôn", "bình minh", "sống ảo",
+        "đi với ny", "đi gia đình", "cả nhà", "có bé",
+        "food tour", "tour ẩm thực",
+        "chụp ảnh", "chụp hình", "golden hour",
+    ],
     "crm": ["khách", "lead", "crm", "follow up"],
     "note": ["ghi chú", "note", "lưu thông tin"],
 }

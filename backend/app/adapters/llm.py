@@ -88,6 +88,12 @@ class LLMAdapter:
 
 
 def _build_system_prompt(trip_context_str: str, interaction_guidance: str = "") -> str:
+    """
+    Build the full system prompt by layering context sections:
+    1. Base companion persona
+    2. Current trip state (day, time slot, agenda)
+    3. Interaction guidance (TravelBrain + Intelligence Graph behavior signals)
+    """
     base = _COMPANION_PROMPT_PATH.read_text(encoding="utf-8")
     parts = [base]
     if trip_context_str:
@@ -125,15 +131,56 @@ def _parse_companion_response(raw: str) -> CompanionReply:
 
 
 def _heuristic_companion_reply(text: str) -> str:
+    """
+    Fallback when OpenAI is unavailable.
+    Uses the intelligence patterns for richer matching.
+    """
     t = text.lower()
-    if any(w in t for w in ["mệt", "buồn ngủ", "kiệt sức", "đuối"]):
+    # Fatigue / exhaustion — most critical
+    if any(w in t for w in [
+        "mệt xỉu", "mệt muốn chết", "kiệt sức", "hết pin",
+        "đuối quá", "die rồi", "mệt lắm", "mệt quá", "mệt rồi", "mệt",
+        "buồn ngủ", "buồn ngủ quá", "ngủ gật",
+    ]):
         return "Mệt rồi thì nghỉ đi, đừng ép. Tìm cái quán cafe gần đây ngồi nhâm nhi, hoặc về khách sạn nằm một lúc. Không cần phải đi thêm đâu hết."
-    if any(w in t for w in ["đói", "ăn gì", "ăn ở đâu"]):
+    # Hunger — second most urgent
+    if any(w in t for w in [
+        "đói xỉu", "đói muốn chết", "đói bẹp", "đói cồn cào", "bụng kêu",
+        "đói lắm", "đói rồi", "đói quá", "đói", "chưa ăn gì",
+        "ăn gì", "ăn ở đâu", "kiếm gì ăn",
+    ]):
         return "Đói thì ghé quán bún cá ngừ hoặc bánh căn gần trung tâm — địa phương nhất, giá tốt, bé cũng ăn được. Bạn đang ở khu nào?"
-    if any(w in t for w in ["mưa", "trời xấu", "bão"]):
+    # Drinking / nightlife
+    if any(w in t for w in [
+        "nhậu", "bia", "làm vài lon", "quất vài", "quán nhậu", "đi bar",
+    ]):
+        return "Nhậu thì kiếm hải sản sông biển hoặc tôm hùm Sông Cầu — tươi, ngon, mồi tốt. Muốn mình chỉ quán cụ thể không?"
+    # Rain redirect
+    if any(w in t for w in [
+        "mưa như trút", "mưa to", "mưa rồi", "mưa", "trời xấu", "bão",
+    ]):
         return "Mưa rồi thì tạm hoãn biển, không vội. Ghé cafe trong thành phố ngồi chờ, hoặc dạo chợ Tuy Hòa cho mát. Mưa Phú Yên thường tạnh nhanh thôi."
-    if any(w in t for w in ["rối", "không biết", "đi đâu", "làm gì", "bây giờ"]):
+    # Heat
+    if any(w in t for w in [
+        "nóng muốn chết", "nóng vãi", "nóng quá", "nắng gắt", "oi bức",
+        "nóng", "nắng", "oi quá",
+    ]):
+        return "Nắng gắt thì tránh ra ngoài buổi trưa. Vào cafe máy lạnh, hồ bơi khách sạn, hoặc nghỉ ngơi — chiều mát sẽ ra tiếp thôi."
+    # Confusion / indecision
+    if any(w in t for w in [
+        "rối quá", "loạn não", "không biết phải làm sao",
+        "rối", "không biết", "đi đâu", "làm gì", "bây giờ sao", "sao bây giờ",
+    ]):
         return "Bình tĩnh nào. Cho mình biết đang ở đâu và mấy giờ, mình tính cho ngay."
-    if any(w in t for w in ["nóng", "nắng gắt"]):
-        return "Nắng gắt thì tránh ra ngoài buổi trưa. Vào cafe, hồ bơi khách sạn, hoặc nghỉ ngơi — chiều mát sẽ ra tiếp thôi."
+    # Recovery / rest seeking
+    if any(w in t for w in [
+        "muốn nghỉ", "cần nghỉ", "đi healing", "muốn reset", "kiếm chỗ chill",
+        "muốn yên tĩnh", "không muốn đi xa",
+    ]):
+        return "Nghe có vẻ cần xả hơi một chút. Cafe Biển Bãi Xép view đẹp, gió mát, không đông — ngồi ngắm biển thư giãn là hợp nhất lúc này."
+    # Excitement / exploration
+    if any(w in t for w in [
+        "hào hứng", "hype", "thích quá", "muốn khám phá", "đi đâu vui",
+    ]):
+        return "Mood tốt đấy! Ghé Gành Đá Đĩa hoặc Đầm Ô Loan — 2 địa điểm đỉnh nhất Phú Yên. Mình chỉ cụ thể hơn nếu bạn cho biết đang ở đâu nhé."
     return "Mình đây, cần gì cứ nói nhé!"

@@ -1,0 +1,360 @@
+"""
+Massive Vietnamese Slang & No-Accent Normalization Database
+
+Covers:
+- No-accent (telex-style without diacritics) typing
+- Internet slang, Gen Z language, meme language
+- Mixed Vietnamese-English expressions
+- Abbreviations, truncations
+- Currency slang
+- Social media shorthand
+"""
+from __future__ import annotations
+
+# ── No-accent → Accented reconstruction ─────────────────────────────────────
+# Vietnamese typed without diacritics (very common on mobile/quick typing)
+NO_ACCENT_MAP: dict[str, str] = {
+    # Core question words
+    "an gi": "ăn gì",
+    "an j": "ăn gì",
+    "an cai gi": "ăn cái gì",
+    "di dau": "đi đâu",
+    "di dau bay gio": "đi đâu bây giờ",
+    "di dau hon": "đi đâu hơn",
+    "lam gi bay gio": "làm gì bây giờ",
+    "lam gi giờ": "làm gì giờ",
+    "xem cai gi": "xem cái gì",
+    "uong gi": "uống gì",
+    "uong j": "uống gì",
+    "choi gi": "chơi gì",
+    "nghi o dau": "nghỉ ở đâu",
+    # Emotional states (no accent)
+    "met qua": "mệt quá",
+    "met roi": "mệt rồi",
+    "met lam": "mệt lắm",
+    "met xiu": "mệt xỉu",
+    "met vl": "mệt vãi",
+    "doi qua": "đói quá",
+    "doi roi": "đói rồi",
+    "doi chet": "đói chết",
+    "doi xiu": "đói xỉu",
+    "doi bep": "đói bẹp",
+    "buon qua": "buồn quá",
+    "chan qua": "chán quá",
+    "nong qua": "nóng quá",
+    "nong chet": "nóng chết",
+    "lanh qua": "lạnh quá",
+    "stress qua": "stress quá",
+    "roi qua": "rối quá",
+    "lo qua": "lo quá",
+    # Movement/location (no accent)
+    "gan thoi": "gần thôi",
+    "gan day thoi": "gần đây thôi",
+    "khong muon di xa": "không muốn đi xa",
+    "luoi di": "lười đi",
+    "luoi qua": "lười quá",
+    "ngai di xa": "ngại đi xa",
+    "ngai di": "ngại đi",
+    "khong muon di chuyen": "không muốn di chuyển",
+    "di nhe": "đi nhẹ",
+    # Food (no accent)
+    "an sang": "ăn sáng",
+    "an trua": "ăn trưa",
+    "an toi": "ăn tối",
+    "an dem": "ăn đêm",
+    "an vat": "ăn vặt",
+    "an ngon": "ăn ngon",
+    "quan ngon": "quán ngon",
+    "quan an": "quán ăn",
+    "hai san": "hải sản",
+    "ca ngu": "cá ngừ",
+    "bun ca": "bún cá",
+    "bun sua": "bún sứa",
+    "banh can": "bánh căn",
+    "banh hoi": "bánh hỏi",
+    "mi quang": "mì Quảng",
+    "com tam": "cơm tấm",
+    "bun bo": "bún bò",
+    "pho bo": "phở bò",
+    "banh mi": "bánh mì",
+    "hu tieu": "hủ tiếu",
+    "ca phe": "cà phê",
+    "ca phe sua": "cà phê sữa",
+    "tra da": "trà đá",
+    "nuoc mia": "nước mía",
+    "tra sua": "trà sữa",
+    "nuoc dua": "nước dừa",
+    # Places (no accent)
+    "bien": "biển",
+    "bai bien": "bãi biển",
+    "cafe bien": "cafe biển",
+    "quan cafe": "quán cafe",
+    "quan nuoc": "quán nước",
+    "cho": "chợ",
+    "cho dem": "chợ đêm",
+    # Time (no accent)
+    "bay gio": "bây giờ",
+    "bay h": "bây giờ",
+    "hom nay": "hôm nay",
+    "toi nay": "tối nay",
+    "dem nay": "đêm nay",
+    "sang mai": "sáng mai",
+    "chieu nay": "chiều nay",
+    "sang som": "sáng sớm",
+    "gan sang": "gần sáng",
+    "khuya roi": "khuya rồi",
+    # Social context (no accent)
+    "di voi ny": "đi với người yêu",
+    "di voi ban be": "đi với bạn bè",
+    "ca nha": "cả nhà",
+    "co tre em": "có trẻ em",
+    "co be": "có bé",
+    "di solo": "đi một mình",
+    "mot minh": "một mình",
+    # Weather (no accent)
+    "troi dep": "trời đẹp",
+    "troi xau": "trời xấu",
+    "mua roi": "mưa rồi",
+    "mua to": "mưa to",
+    "nang gat": "nắng gắt",
+    "oi qua": "oi quá",
+    "gio to": "gió to",
+    # Core verbs (no accent) — high frequency
+    "khong muon": "không muốn",
+    "khong can": "không cần",
+    "khong biet": "không biết",
+    "khong duoc": "không được",
+    "khong co": "không có",
+    "khong ngai": "không ngại",
+    "muon di": "muốn đi",
+    "muon an": "muốn ăn",
+    "muon uong": "muốn uống",
+    "muon nghi": "muốn nghỉ",
+    "can nghi": "cần nghỉ",
+    "luoi di": "lười đi",
+    "ngai di": "ngại đi",
+    "ngai xa": "ngại xa",
+    # General expressions (no accent)
+    "biet roi": "biết rồi",
+    "khong biet": "không biết",
+    "ok roi": "oke rồi",
+    "duoc roi": "được rồi",
+    "thi thoi": "thì thôi",
+    "cung duoc": "cũng được",
+    "co gi khong": "có gì không",
+    "sao gi": "sao gì",
+    "the nao": "thế nào",
+    "nhu the nao": "như thế nào",
+}
+
+# ── Internet / Gen Z / Meme Slang ────────────────────────────────────────────
+INTERNET_SLANG: dict[str, str] = {
+    # Intensity markers
+    "vl": "vãi luôn",
+    "vcl": "vãi cả luôn",
+    "vkl": "vãi cả luôn",
+    "vl luôn": "vãi luôn",
+    "vãi l": "vãi luôn",
+    "vãi lol": "vãi luôn",
+    "wtf": "ủa gì vậy",
+    "omg": "ôi trời",
+    "lol": "haha",
+    "haha": "haha",
+    "hihi": "hehe",
+    "hehe": "hehe",
+    "kkk": "haha",
+    "kkkk": "haha",
+    # Agreement / affirmation
+    "oke": "okay",
+    "okê": "okay",
+    "oki": "okay",
+    "ok": "okay",
+    "oce": "okay",
+    "ừa": "ừ",
+    "uh huh": "ừ",
+    "yep": "ừ",
+    "yap": "ừ",
+    "no cap": "thật sự",
+    "fr": "thật ra",
+    "fr fr": "thật sự luôn",
+    # Negation / refusal
+    "nope": "không",
+    "nah": "không",
+    "nop": "không",
+    "khum": "không",
+    "hong": "không",
+    "hông": "không",
+    "éo": "không",
+    "éo có": "không có",
+    "ko": "không",
+    "k": "không",
+    "kh": "không",
+    # Food/activity slang
+    "chill": "thư giãn",
+    "chill nhẹ": "thư giãn nhẹ",
+    "chill thôi": "thư giãn thôi",
+    "vibe": "không khí",
+    "vibe check": "kiểm tra không khí",
+    "flex": "khoe",
+    "hype": "hào hứng",
+    "lowkey": "nhẹ nhàng",
+    "highkey": "rõ ràng",
+    "slay": "đỉnh",
+    "iconic": "huyền thoại",
+    "lit": "vui",
+    "fire": "xịn",
+    "goat": "đỉnh nhất",
+    "based": "thực tế",
+    "touch grass": "ra ngoài hít thở",
+    "vibe chung": "không khí chung",
+    "healing": "nghỉ ngơi tâm hồn",
+    "đi healing": "đi nghỉ ngơi tâm hồn",
+    "reset": "nghỉ ngơi phục hồi",
+    "self care": "chăm sóc bản thân",
+    "me time": "thời gian cho bản thân",
+    "solo trip": "đi một mình",
+    "staycation": "nghỉ tại chỗ",
+    "food tour": "tour ẩm thực",
+    "hidden gem": "chỗ ít người biết",
+    "must try": "phải thử",
+    "underrated": "ít người biết nhưng ngon",
+    "overrated": "nổi tiếng nhưng không xứng",
+    "tourist trap": "bẫy du lịch",
+    # Emotional slang
+    "siu": "siêu",
+    "xiu": "xỉu",
+    "mlem": "ngon",
+    "iu": "yêu",
+    "iuu": "yêu lắm",
+    "thích phết": "thích đấy",
+    "ngầu phết": "ngầu đấy",
+    "ngon phết": "ngon đấy",
+    "hay phết": "hay đấy",
+    "cute phết": "dễ thương đấy",
+    "die rồi": "chết rồi",
+    "đơ rồi": "đứng hình rồi",
+    "ngu rồi": "choáng rồi",
+    "tan chảy": "rất thích",
+    "chìm": "chìm đắm",
+    "cháy": "hết vé / hết chỗ",
+    "gánh team": "làm thay cả nhóm",
+    "nể": "kính nể",
+    "chặt chém": "đắt",
+    "hét giá": "giá quá cao",
+    "dính": "bị mắc kẹt / nghiện",
+    "phát cuồng": "mê quá",
+    "rần rần": "rất nhiều người quan tâm",
+    "ăn hành": "chịu đựng điều xấu",
+    "ăn cháo đá bát": "phản bội",
+    # Platform / tech slang
+    "dm": "nhắn tin riêng",
+    "pm": "nhắn tin riêng",
+    "tag": "gắn thẻ",
+    "story": "tin",
+    "reels": "video ngắn",
+    "viral": "lan truyền",
+    "trending": "xu hướng",
+    "check in": "đến và chụp ảnh",
+    "check-in": "đến và chụp ảnh",
+    "sống ảo": "chụp ảnh đẹp",
+    "ảnh thờ": "ảnh đẹp kiểu nghệ thuật",
+    "content": "nội dung",
+    "feed": "trang cá nhân",
+}
+
+# ── Currency / Money Slang ────────────────────────────────────────────────────
+CURRENCY_SLANG: dict[str, str] = {
+    "củ": "triệu đồng",
+    "cu": "triệu đồng",
+    "tỏi": "triệu đồng",
+    "lít": "triệu đồng",
+    "nghìn": "ngàn đồng",
+    "k": "ngàn đồng",
+    "đồng": "đồng",
+    "xác": "tiền lẻ",
+    "chặt chém": "giá cao bất hợp lý",
+    "giá tốt": "giá phải chăng",
+    "giá hợp lý": "giá phải chăng",
+    "không đắt": "giá phải chăng",
+    "rẻ mà ngon": "giá rẻ chất lượng tốt",
+    "đáng tiền": "xứng đáng với giá",
+    "không đáng": "không xứng đáng với giá",
+    "bình dân": "giá rẻ",
+    "cao cấp": "sang trọng",
+    "sang chảnh": "sang trọng",
+    "bình dân thôi": "giá rẻ thôi",
+}
+
+# ── Abbreviated / Truncated Forms ─────────────────────────────────────────────
+ABBREVIATIONS: dict[str, str] = {
+    "ny": "người yêu",
+    "bff": "bạn thân",
+    "bae": "người thương",
+    "fam": "gia đình",
+    "squad": "nhóm bạn",
+    "crew": "nhóm bạn",
+    "gang": "nhóm bạn",
+    "cf": "cà phê",
+    "bk": "bánh kẹo",
+    "hs": "hải sản",
+    "đc": "được",
+    "đk": "điều kiện",
+    "tn": "tối nay",
+    "sn": "sáng nay",
+    "cn": "chiều nay",
+    "dn": "đêm nay",
+    "bh": "bây giờ",
+    "ntn": "như thế nào",
+    "ntl": "như thế là",
+    "kc": "không có",
+    "kt": "kiểm tra",
+    "tt": "thôi thôi",
+    "tth": "thư thái",
+    "nge": "nghe",
+    "mk": "mình",
+    "mh": "mình",
+    "t": "tôi / mình",
+    "m": "mình",
+    "b": "bạn",
+    "bn": "bạn",
+    "mn": "mọi người",
+    "ae": "anh em",
+    "ac": "anh chị",
+}
+
+# ── Composite: All normalizations in priority order ───────────────────────────
+def get_all_normalizations() -> list[tuple[str, str]]:
+    """
+    Returns all normalization pairs in priority order for text replacement.
+    Longer patterns first to prevent partial matches.
+    """
+    pairs: list[tuple[str, str]] = []
+
+    # No-accent multi-word first (longest → shortest)
+    sorted_no_accent = sorted(NO_ACCENT_MAP.items(), key=lambda x: -len(x[0]))
+    pairs.extend(sorted_no_accent)
+
+    # Internet slang
+    sorted_slang = sorted(INTERNET_SLANG.items(), key=lambda x: -len(x[0]))
+    pairs.extend(sorted_slang)
+
+    # Abbreviations (short, apply last to avoid breaking longer patterns)
+    pairs.extend(ABBREVIATIONS.items())
+
+    return pairs
+
+
+# ── Common "I want" intent openers ─────────────────────────────────────────────
+WANT_MARKERS: list[str] = [
+    "tôi muốn", "tui muốn", "t muốn", "mình muốn", "mk muốn",
+    "cần", "kiếm", "tìm", "muốn",
+    "kiếm gì ăn", "kiếm gì uống", "kiếm chỗ chill", "kiếm chỗ ngồi",
+    "đi đâu giờ", "đi đâu bây giờ", "làm gì bây giờ",
+    "muốn nghỉ", "muốn chill", "muốn ăn", "muốn uống",
+    "làm tí", "đi healing", "muốn đi", "nên đi",
+    "gợi ý", "recommend", "suggest", "hay là",
+    "mình ăn gì", "mình đi đâu", "mình uống gì",
+    "cho mình hỏi", "bạn biết", "có biết không",
+    "chỗ nào ngon", "quán nào ngon", "ở đâu ngon",
+    "đề xuất", "tư vấn", "chỉ chỗ",
+]
