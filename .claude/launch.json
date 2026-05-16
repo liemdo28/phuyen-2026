@@ -1,0 +1,26 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "FastAPI Backend (uvicorn)",
+      "runtimeExecutable": "uvicorn",
+      "runtimeArgs": ["app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"],
+      "cwd": "backend",
+      "port": 8000
+    },
+    {
+      "name": "Node.js Bot (Telegraf)",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["--watch", "src/index.js"],
+      "cwd": "backend",
+      "port": 3000
+    },
+    {
+      "name": "QA Runner (mock)",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["qa/run_qa.py", "--mock", "--sessions", "20"],
+      "cwd": ".",
+      "port": null
+    }
+  ]
+}

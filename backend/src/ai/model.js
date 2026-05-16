@@ -8,16 +8,22 @@ import axios from 'axios';
 class AIModel {
   constructor() {
     this.provider = config.ai.provider;
+    this.model = this.provider === 'openai' ? config.ai.openai.model : null;
+    this._clientReady = this._initClient();
+  }
+
+  async _initClient() {
     if (this.provider === 'openai') {
-      this.client = new (await import('openai')).default({
+      const { default: OpenAI } = await import('openai');
+      this.client = new OpenAI({
         apiKey: config.ai.openai.apiKey,
         baseURL: config.ai.openai.baseUrl,
       });
-      this.model = config.ai.openai.model;
     }
   }
 
   async complete(prompt, systemPrompt = '', conversationHistory = []) {
+    await this._clientReady;
     if (this.provider === 'openai') {
       return this._openaiComplete(prompt, systemPrompt, conversationHistory);
     } else {
@@ -25,67 +31,50 @@ class AIModel {
     }
   }
 
-  // ── OpenAI ────────────────────────────────────────────
   async _openaiComplete(prompt, systemPrompt, history) {
     const messages = [];
     if (systemPrompt) messages.push({ role: 'system', content: systemPrompt });
-    
-    // Add conversation history for context
     history.slice(-10).forEach(msg => {
       messages.push({ role: msg.role || 'user', content: msg.content });
     });
-    
     messages.push({ role: 'user', content: prompt });
-
     const response = await this.client.chat.completions.create({
       model: this.model,
       messages,
       temperature: 0.7,
       max_tokens: 2000,
     });
-
     return response.choices[0]?.message?.content || '';
   }
 
-  // ── Google Gemini ─────────────────────────────────────
   async _geminiComplete(prompt, systemPrompt, history) {
     const contents = [];
-    
     history.slice(-10).forEach(msg => {
       contents.push({
         role: msg.role === 'assistant' ? 'model' : 'user',
         parts: [{ text: msg.content }],
       });
     });
-
     const payload = {
       contents,
       systemInstruction: systemPrompt ? { parts: [{ text: systemPrompt }] } : undefined,
-      generationConfig: {
-        temperature: 0.7,
-        maxOutputTokens: 2000,
-      },
+      generationConfig: { temperature: 0.7, maxOutputTokens: 2000 },
     };
-
-    // Add the current prompt
     if (contents.length === 0) {
       payload.contents = [{ role: 'user', parts: [{ text: prompt }] }];
     } else {
       payload.contents.push({ role: 'user', parts: [{ text: prompt }] });
     }
-
     const url = `${config.ai.gemini.baseUrl}/models/${config.ai.gemini.model}:generateContent?key=${config.ai.gemini.apiKey}`;
-    
     const response = await axios.post(url, payload, {
       headers: { 'Content-Type': 'application/json' },
       timeout: 30000,
     });
-
     return response.data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
   }
 
-  // ── Vision (image understanding) ──────────────────────
   async analyzeImage(imageBase64, prompt) {
+    await this._clientReady;
     if (this.provider === 'openai') {
       const response = await this.client.chat.completions.create({
         model: 'gpt-4o-mini',
@@ -99,23 +88,12 @@ class AIModel {
         max_tokens: 1000,
       });
       return response.choices[0]?.message?.content || '';
-    } else {
-      const url = `${config.ai.gemini.baseUrl}/models/${config.ai.gemini.model}:generateContent?key=${config.ai.gemini.apiKey}`;
-      const response = await axios.post(url, {
-        contents: [{
-          parts: [
-            { text: prompt },
-            { inline_data: { mime_type: 'image/jpeg', data: imageBase64 } },
-          ],
-        }],
-        generationConfig: { maxOutputTokens: 1000 },
-      }, { headers: { 'Content-Type': 'application/json' }, timeout: 30000 });
-      return response.data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
     }
+    return '';
   }
 
-  // ── Speech-to-text ────────────────────────────────────
   async transcribe(audioBase64, mimeType = 'audio/ogg') {
+    await this._clientReady;
     if (this.provider === 'openai') {
       const response = await this.client.audio.transcriptions.create({
         model: 'whisper-1',
@@ -124,14 +102,11 @@ class AIModel {
         response_format: 'text',
       });
       return response.text || '';
-    } else {
-      // Gemini doesn't have native STT — return empty, caller should use external STT
-      return '';
     }
+    return '';
   }
 }
 
-// Singleton
 let instance = null;
 export function getAIModel() {
   if (!instance) instance = new AIModel();
