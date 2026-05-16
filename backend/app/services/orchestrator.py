@@ -767,12 +767,43 @@ class TelegramOrchestrator:
             trip_context_str,
             interaction_guidance,
         )
-        # Auto-attach Maps buttons if AI recommended a specific place
+        # ── Mi response shaping + button injection ────────────────────────────
         reply_markup = None
-        if companion.place_name:
-            place = find_place(companion.place_name)
-            if place:
-                reply_markup = build_telegram_keyboard(place)
+        try:
+            from app.mi import MiEngine
+            from app.mi.location_db import get_place as mi_get_place
+            mi = MiEngine()
+            mi_ctx = mi.analyze(message_text)
+            place_lat, place_lon = None, None
+            if companion.place_name:
+                mi_place = mi_get_place(
+                    companion.place_name.lower().replace(" ", "_").replace("ã", "a").replace("ề", "e")
+                )
+                if mi_place:
+                    place_lat, place_lon = mi_place.lat, mi_place.lon
+            mi_response = mi.shape(
+                raw_reply=companion.text,
+                ctx=mi_ctx,
+                user_lat=last_lat if 'last_lat' in dir() else None,
+                user_lon=last_lon if 'last_lon' in dir() else None,
+                place_name=companion.place_name,
+                place_lat=place_lat,
+                place_lon=place_lon,
+            )
+            if mi_response.keyboard:
+                reply_markup = mi_response.keyboard
+            companion = type(companion)(
+                text=mi_response.text,
+                place_name=mi_response.place_name or companion.place_name,
+            )
+        except Exception as _mi_ex:
+            logger.debug("Mi response shaping skipped: %s", _mi_ex)
+            # Fallback: use existing maps keyboard
+            if companion.place_name:
+                place = find_place(companion.place_name)
+                if place:
+                    reply_markup = build_telegram_keyboard(place)
+
         return AssistantResponse(
             text=companion.text,
             reply_markup=reply_markup,

@@ -161,9 +161,27 @@ def _parse_companion_response(raw: str) -> CompanionReply:
 
 def _heuristic_companion_reply(text: str) -> str:
     """
-    Fallback when OpenAI is unavailable.
-    Mi persona — always Vietnamese, always warm, never robotic.
+    Mi's built-in response when LLM is unavailable.
+    Uses Mi's full engine stack: weather → nightlife → location → keyword handlers.
     """
+    # ── Mi engine fast-path (weather + nightlife + location) ──────────────────
+    try:
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+        from app.mi.weather_engine import detect_weather_from_text
+        from app.mi.nightlife_engine import plan_night_flow
+
+        weather = detect_weather_from_text(text)
+        if weather.redirect_suggestion:
+            return weather.redirect_suggestion
+
+        now = datetime.now(ZoneInfo("Asia/Ho_Chi_Minh"))
+        night_plan = plan_night_flow(text, hour=now.hour, has_child=True)
+        if night_plan and night_plan.mi_suggestion:
+            return night_plan.mi_suggestion
+    except Exception:
+        pass  # engines unavailable — fall through to keyword handlers
+
     t = text.lower()
 
     # Miền Tây / Southern dialect detection
