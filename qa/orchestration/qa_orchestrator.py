@@ -147,7 +147,7 @@ class QAOrchestrator:
                 dimension="context_understanding",
             ))
 
-        return report
+        return self._finalize_report(report)
 
     def _run_emotional_scenario(self, ai_handler):
         """Run emotional/exhaustion scenario."""
@@ -213,7 +213,7 @@ class QAOrchestrator:
                 dimension="emotional_awareness",
             ))
 
-        return report
+        return self._finalize_report(report)
 
     def _run_slang_scenario(self, ai_handler):
         """Run slang/Gen Z scenario."""
@@ -274,7 +274,7 @@ class QAOrchestrator:
                     dimension="travel_orchestration",
                 ))
 
-        return report
+        return self._finalize_report(report)
 
     def _run_nightlife_scenario(self, ai_handler):
         """Run nightlife/late-night scenario."""
@@ -309,7 +309,7 @@ class QAOrchestrator:
                 dimension="emotional_awareness",
             ))
 
-        return report
+        return self._finalize_report(report)
 
     def _run_sarcasm_scenario(self, ai_handler):
         """Run sarcasm detection scenario."""
@@ -340,7 +340,7 @@ class QAOrchestrator:
                 dimension="emotional_awareness",
             ))
 
-        return report
+        return self._finalize_report(report)
 
     def _run_child_safety_scenario(self, ai_handler):
         """Run child safety critical scenario."""
@@ -439,6 +439,30 @@ class QAOrchestrator:
             persona=persona,
             scenario=session.scenario.value,
         )
+
+    def _finalize_report(self, report):
+        """Re-evaluate audit_result and dimension_scores after extra violations are added."""
+        from ..audit.audit_engine import AuditResult, AuditSeverity
+        has_critical = any(v.severity == AuditSeverity.CRITICAL for v in report.violations)
+        has_high = any(v.severity == AuditSeverity.HIGH for v in report.violations)
+        if has_critical:
+            report.audit_result = AuditResult.FAIL
+            report.severity = AuditSeverity.CRITICAL
+        elif has_high:
+            report.audit_result = AuditResult.FAIL
+            report.severity = AuditSeverity.HIGH
+        # Update dimension_scores based on violations
+        dim_penalty = {}
+        for v in report.violations:
+            dim = v.dimension
+            penalty = 0.5 if v.severity == AuditSeverity.CRITICAL else (
+                0.2 if v.severity == AuditSeverity.HIGH else 0.1
+            )
+            dim_penalty[dim] = min(dim_penalty.get(dim, 0) + penalty, 1.0)
+        for dim, penalty in dim_penalty.items():
+            current = report.dimension_scores.get(dim, 1.0)
+            report.dimension_scores[dim] = max(0.0, current - penalty)
+        return report
 
     def _check_fail_condition(self, condition: str, response: str) -> bool:
         """Check if a fail condition is present in the response."""

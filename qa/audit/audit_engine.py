@@ -287,26 +287,44 @@ class AuditEngine:
         user_lower = user_msg.lower()
         response_lower = response.lower()
 
+        # Phrases that LOOK like weather/location/food but are NOT queries
+        false_positive_exclusions = {
+            "weather": [
+                "trời ơi", "ôi trời", "trời đất", "thôi chết", "ối dồi",
+                "trời xong rồi", "hết hy vọng",
+                "mặt trời lặn",   # sunset = timing, not weather
+                "mặt trời mọc",
+                "đông quá trời",  # "crowded" not "cold/winter"
+                "sao mà đông",    # same — crowded
+            ],
+            "food": ["ăn năn", "ăn mừng", "ăn hiếp"],
+        }
+
         intent_checks = {
             "food": (
-                ["ăn", "quán", "đói", "hải sản", "cơm", "bún"],
-                ["ăn", "quán", "gợi ý", "địa chỉ", "giá", "ngon"],
+                ["ăn gì", "quán", "đói", "hải sản", "cơm", "bún", "đồ ăn",
+                 "doi qua", "an gi", "muon an"],
+                ["ăn", "quán", "gợi ý", "địa chỉ", "giá", "ngon", "món", "cơm", "bún"],
                 "User asking about food but AI didn't provide food recommendations",
             ),
             "location": (
-                ["ở đâu", "cách đây", "đường đến", "chỗ nào"],
+                ["ở đâu", "cách đây", "đường đến", "chỗ nào cụ thể"],
                 ["km", "phút", "đường", "hướng", "google maps", "địa chỉ"],
                 "User asking for directions/location but AI didn't provide navigation help",
             ),
             "weather": (
-                ["thời tiết", "mưa", "nắng", "trời"],
-                ["độ", "mưa", "nắng", "thời tiết", "forecast"],
-                "User asking about weather but AI didn't provide weather info",
+                ["thời tiết hôm nay", "trời có mưa không", "dự báo thời tiết", "nhiệt độ",
+                 "trời mưa rồi", "mưa rồi", "troi mua"],
+                ["mưa", "nắng", "thời tiết", "forecast", "trong nhà", "trú mưa", "indoor",
+                 "bảo tàng", "trung tâm thương mại", "mall", "quán"],
+                "User mentioned rain/weather but AI didn't acknowledge weather or suggest alternatives",
             ),
         }
 
         for intent, (user_signals, response_signals, fail_reason) in intent_checks.items():
-            if any(s in user_lower for s in user_signals):
+            exclusions = false_positive_exclusions.get(intent, [])
+            is_excluded = any(exc in user_lower for exc in exclusions)
+            if not is_excluded and any(s in user_lower for s in user_signals):
                 if not any(s in response_lower for s in response_signals):
                     violations.append(AuditViolation(
                         rule=f"missed_{intent}_intent",
