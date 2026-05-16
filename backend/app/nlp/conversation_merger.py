@@ -26,7 +26,7 @@ class ConversationSnippet:
 @dataclass
 class MergedIntent:
     """Result of merging fragmented conversation messages."""
-    primary_type: str  # "expense", "packing", "travel", "general"
+    primary_type: str = "general"  # "expense", "packing", "travel", "general"
     amount: int | None = None
     category: str | None = None
     entity_name: str | None = None
