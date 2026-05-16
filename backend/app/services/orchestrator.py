@@ -882,6 +882,7 @@ class TelegramOrchestrator:
             conversation_history,
             trip_context_str,
             interaction_guidance,
+            chat_id=chat.id,
         )
         # ── Mi response shaping + button injection ────────────────────────────
         reply_markup = None

@@ -83,6 +83,7 @@ class LLMAdapter:
         conversation_history: list[dict[str, str]],
         trip_context_str: str = "",
         interaction_guidance: str = "",
+        chat_id: int = 0,
     ) -> CompanionReply:
         if not settings.openai_api_key:
             logger.warning("No OPENAI_API_KEY — using heuristic companion reply")
@@ -122,8 +123,24 @@ class LLMAdapter:
             except Exception as e:
                 logger.warning("MienTayEngine.analyze failed: %s", e)
 
+        # Human Presence Engine — emotional pacing, comfort orchestration, mental load reduction
+        presence_guidance = ""
+        try:
+            from app.mi.presence import build_presence_context
+            p_ctx = build_presence_context(message_text, chat_id=chat_id)
+            if (p_ctx.current.fatigue > 0.15 or p_ctx.current.stress > 0.15
+                    or p_ctx.current.wants_quiet or p_ctx.recent_was_tired):
+                presence_guidance = p_ctx.build_guidance()
+                logger.debug(
+                    "Presence: fatigue=%.0f%% stress=%.0f%% mode=%s pace=%s",
+                    p_ctx.current.fatigue * 100, p_ctx.current.stress * 100,
+                    p_ctx.social_mode.value, p_ctx.response_pace.value,
+                )
+        except Exception as e:
+            logger.warning("Presence engine failed: %s", e)
+
         combined_guidance = "\n\n".join(
-            p for p in [interaction_guidance, mi_guidance, mien_tay_guidance] if p
+            p for p in [interaction_guidance, mi_guidance, mien_tay_guidance, presence_guidance] if p
         )
         system = _build_system_prompt(trip_context_str, combined_guidance) + _STRUCTURED_SUFFIX
         messages = _build_messages(system, conversation_history, message_text)
