@@ -153,6 +153,74 @@ export function detectLanguage(text) {
 }
 
 /**
+ * Extract companion signals — emotional, energy, social state from message
+ * These feed into updateCompanionState() to build Mi's emotional memory.
+ */
+export function extractCompanionSignals(text) {
+  const t = text.toLowerCase();
+  const signals = {
+    fatigueDelta: 0,
+    stressDelta: 0,
+    socialMode: null,
+    recoverySignal: false,
+    cognitiveOverload: false,
+    excitementSignal: false,
+    crowdAvoidance: false,
+    crowdSeeking: false,
+  };
+
+  // Fatigue signals (additive)
+  if (/mệt|met |kiet suc|kiệt sức|không đi nổi|khong di noi|mệt dữ|exhausted|burnout/.test(t))
+    signals.fatigueDelta += 3;
+  if (/mệt quá|met qua|mệt lắm|mệt vl|chết mệt/.test(t))
+    signals.fatigueDelta += 2;
+  if (/nhẹ thôi|nhẹ nhẹ|nghỉ thôi|nge thoi/.test(t))
+    signals.fatigueDelta += 1;
+
+  // Recovery recovery signals (reduce fatigue)
+  if (/ăn rồi|nghỉ rồi|tỉnh rồi|khỏe hơn|ready|sẵn sàng|năng lượng/.test(t))
+    signals.fatigueDelta -= 2;
+  if (/quẩy|hype|đỉnh quá|vui vl|thích lắm|ez đỉnh/.test(t))
+    signals.fatigueDelta -= 1;
+
+  // Stress signals
+  if (/sao lại|!!!|vô lý|hết sảy sao|không chấp nhận|tức|bực|kế hoạch hỏng/.test(t))
+    signals.stressDelta += 2;
+  if (/lo|lo lắng|sợ|nguy|khẩn|gấp/.test(t))
+    signals.stressDelta += 1;
+
+  // Social mode detection
+  if (/chán|buồn|cô đơn|một mình|chan ghe|buon qua|nhớ nhà/.test(t))
+    signals.socialMode = 'lonely';
+  else if (/quẩy|nhậu|đông vui|party|tụi mình|bạn bè/.test(t))
+    signals.socialMode = 'nightlife';
+  else if (/yên tĩnh|vắng|một mình|im lặng|nghỉ ngơi/.test(t))
+    signals.socialMode = 'introvert';
+  else if (/hype|đỉnh|vui|chill|flex/.test(t))
+    signals.socialMode = 'hype';
+  else if (/chữa lành|healing|nhẹ|bình yên/.test(t))
+    signals.socialMode = 'healing';
+
+  // Recovery signal
+  if (/nghỉ|ngủ|nằm|ngồi|trà|cafe|điều hòa|ac|mát/.test(t))
+    signals.recoverySignal = true;
+
+  // Excitement
+  if (/đỉnh|wow|thích|đẹp quá|ngon quá|vui|tuyệt/.test(t))
+    signals.excitementSignal = true;
+
+  // Cognitive overload (too many things happening)
+  if (/rối|không biết|làm sao|phải làm gì|overwhelm|hết biết/.test(t))
+    signals.cognitiveOverload = true;
+
+  // Crowd preference
+  if (/vắng|yên tĩnh|ít người|không đông/.test(t)) signals.crowdAvoidance = true;
+  if (/đông|náo nhiệt|vui nhộn|nhiều người/.test(t)) signals.crowdSeeking = true;
+
+  return signals;
+}
+
+/**
  * Map detected intent to handler name
  */
 export function intentToHandler(intent, subIntents = []) {

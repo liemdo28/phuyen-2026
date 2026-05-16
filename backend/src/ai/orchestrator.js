@@ -3,8 +3,8 @@
 // ════════════════════════════════════════════════════════
 
 import { getAIModel } from './model.js';
-import { detectIntent, detectLanguage, intentToHandler } from './intent.js';
-import { buildContextString, getHistoryForAI, learnPreferences, getSession, updateTripContext } from './memory.js';
+import { detectIntent, detectLanguage, intentToHandler, extractCompanionSignals } from './intent.js';
+import { buildContextString, getHistoryForAI, learnPreferences, getSession, updateTripContext, updateCompanionState, buildCompanionContext } from './memory.js';
 import {
   TRAVEL_ASSISTANT_PROMPT,
   FOOD_RECOMMENDATION_PROMPT,
@@ -27,14 +27,18 @@ export async function processMessage(userId, text, context = {}) {
   // 1. Detect language
   const lang = detectLanguage(text);
 
-  // 2. Learn preferences from message
+  // 2. Learn preferences + update emotional companion state
   learnPreferences(userId, text);
+  const companionSignals = extractCompanionSignals(text);
+  companionSignals._rawText = text;
+  updateCompanionState(userId, companionSignals);
 
   // 3. Detect intent
   const intent = detectIntent(text, context);
 
-  // 4. Build context
+  // 4. Build context + companion thought layer
   const userContext = buildContextString(userId);
+  const companionCtx = buildCompanionContext(userId);
   const history = getHistoryForAI(userId, 8);
 
   // 5. Gather additional context data
@@ -47,12 +51,13 @@ export async function processMessage(userId, text, context = {}) {
     lang,
     userContext,
     additionalData,
-    history
+    history,
+    companionCtx
   );
 
   // 7. If specialized handler didn't produce output, use general AI
   const response = specializedResponse || await generateGeneralResponse(
-    text, lang, userContext, additionalData, history
+    text, lang, userContext, additionalData, history, companionCtx
   );
 
   return {
@@ -65,28 +70,28 @@ export async function processMessage(userId, text, context = {}) {
 /**
  * Route intent to specialized handler
  */
-async function routeIntent(intent, text, lang, userContext, additionalData, history) {
+async function routeIntent(intent, text, lang, userContext, additionalData, history, companionCtx = '') {
   const handler = intentToHandler(intent.primary, intent.subIntents);
 
   switch (handler) {
     case 'handleWeather':
-      return await handleWeatherIntent(text, lang, additionalData);
+      return await handleWeatherIntent(text, lang, additionalData, companionCtx);
     case 'handleFood':
-      return await handleFoodIntent(text, lang, userContext, additionalData);
+      return await handleFoodIntent(text, lang, userContext, additionalData, companionCtx);
     case 'handleNearby':
-      return await handleNearbyIntent(text, lang, userContext, additionalData);
+      return await handleNearbyIntent(text, lang, userContext, additionalData, companionCtx);
     case 'handleItinerary':
       return await handleItineraryIntent(text, lang, userContext, additionalData);
     case 'handleTransport':
-      return await handleTransportIntent(text, lang, userContext, additionalData);
+      return await handleTransportIntent(text, lang, userContext, additionalData, companionCtx);
     case 'handleTranslate':
       return await handleTranslateIntent(text, lang);
     case 'handleLocal':
-      return await handleLocalIntent(text, lang, userContext);
+      return await handleLocalIntent(text, lang, userContext, companionCtx);
     case 'handleEmergency':
       return await handleEmergencyIntent(text, lang);
     case 'handleBudget':
-      return await handleBudgetIntent(text, lang, userContext);
+      return await handleBudgetIntent(text, lang, userContext, companionCtx);
     case 'handlePacking':
       return await handlePackingIntent(text, lang);
     default:
@@ -116,7 +121,7 @@ async function handleWeatherIntent(text, lang, data) {
   );
 }
 
-async function handleFoodIntent(text, lang, userContext, data) {
+async function handleFoodIntent(text, lang, userContext, data, companionCtx = '') {
   const loc = getSession(data.userId)?.tripContext?.currentLocation;
   const places = data.nearbyPlaces || [];
 
@@ -125,6 +130,7 @@ async function handleFoodIntent(text, lang, userContext, data) {
   ).join('\n') || 'Không có dữ liệu quán gần đây';
 
   const prompt = [
+    companionCtx,
     `User query: "${text}"`,
     `Language: ${lang}`,
     loc
@@ -132,12 +138,12 @@ async function handleFoodIntent(text, lang, userContext, data) {
       : `User GPS: chưa chia sẻ — dùng quán ở Tuy Hòa làm mặc định`,
     `Database quán (CHỈ dùng những quán này, KHÔNG bịa thêm):\n${placesText}`,
     `User preferences: ${userContext}`,
-  ].join('\n');
+  ].filter(Boolean).join('\n');
 
   return await ai.complete(prompt, FOOD_RECOMMENDATION_PROMPT);
 }
 
-async function handleNearbyIntent(text, lang, userContext, data) {
+async function handleNearbyIntent(text, lang, userContext, data, companionCtx = '') {
   const loc = getSession(data.userId)?.tripContext?.currentLocation;
   const places = data.nearbyPlaces || [];
 
@@ -146,6 +152,7 @@ async function handleNearbyIntent(text, lang, userContext, data) {
   ).join('\n') || 'Không có dữ liệu';
 
   const prompt = [
+    companionCtx,
     `User query: "${text}"`,
     `Language: ${lang}`,
     loc
@@ -153,7 +160,7 @@ async function handleNearbyIntent(text, lang, userContext, data) {
       : `User GPS: chưa chia sẻ`,
     `Địa điểm gần (sắp xếp theo khoảng cách, CHỈ dùng list này):\n${placesText}`,
     `User preferences: ${userContext}`,
-  ].join('\n');
+  ].filter(Boolean).join('\n');
 
   return await ai.complete(prompt, HANDLE_NEARBY_PROMPT);
 }
@@ -248,20 +255,20 @@ async function handlePackingIntent(text, lang) {
   return responses[lang] || responses.default;
 }
 
-async function generateGeneralResponse(text, lang, userContext, additionalData, history) {
+async function generateGeneralResponse(text, lang, userContext, additionalData, history, companionCtx = '') {
   const session = getSession(additionalData.userId);
   const loc = session?.tripContext?.currentLocation;
-  const locationLine = loc
-    ? `User's saved location: ${loc.name} (lat: ${loc.lat}, lon: ${loc.lon})`
-    : 'User location: not shared yet';
 
   const prompt = [
+    companionCtx,
     `User message: "${text}"`,
     `Language: ${lang}`,
-    locationLine,
+    loc
+      ? `User GPS: ${loc.name} (lat ${loc.lat}, lon ${loc.lon})`
+      : 'User location: not shared yet',
     `User preferences: ${userContext}`,
     additionalData.weather
-      ? `Current weather in Phú Yên: ${additionalData.weather.description}, ${additionalData.weather.temp}°C`
+      ? `Thời tiết Phú Yên hiện tại: ${additionalData.weather.description}, ${additionalData.weather.temp}°C`
       : '',
   ].filter(Boolean).join('\n');
 
