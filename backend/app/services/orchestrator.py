@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import random
 import re
 import unicodedata
 from datetime import datetime
@@ -95,6 +96,60 @@ def _is_pure_greeting(text: str) -> bool:
     norm = _strip_diacritics(stripped)
     return norm in {_strip_diacritics(g) for g in _GREETING_TOKENS}
 
+
+# ── Human-like Mi recovery messages — NEVER show backend errors to users ──
+_MI_RECOVERY_MESSAGES = [
+    "Ui hình như Mi bị khựng một chút 😅 Bạn nhắn lại giúp Mi nha!",
+    "Mi bị lạc context nhẹ rồi 😭 Thử nhắn lại xem nha!",
+    "Hình như Mi hiểu nhầm rồi 😅 Mình thử nhắn lại xem nha.",
+    "Mi đang hơi đơ 😓 Bạn gửi lại tin nhắn giúp Mi nha!",
+    "Ôi Mi bị lag nhẹ 😅 Nhắn lại đi, Mi nghe nè!",
+]
+
+# ── Emotional fast-path patterns ── bypass LLM for common emotional signals ──
+_HUNGER_PATTERNS = (
+    "đói r", "đói rồi", "đói quá", "đói bụng", "bụng đói",
+    "đói ngủ", "ói bụng", "muốn ăn", "ăn gì ngon", "ăn gì đây",
+    "ăn gì bây giờ", "kiếm gì ăn", "tìm chỗ ăn", "đi ăn thôi",
+    "đi ăn đi", "ăn gì không", "ăn ở đâu", "chỗ ăn",
+)
+_FATIGUE_PATTERNS = (
+    "mệt r", "mệt rồi", "mệt quá", "mệt lắm", "mệt ghê",
+    "buồn ngủ", "muốn nghỉ", "nghỉ chút", "nghỉ thôi", "nghỉ ngơi",
+    "kiệt sức", "hết sức", "chân mỏi", "mỏi chân", "mỏi lắm",
+)
+_SAD_PATTERNS = (
+    "buồn r", "buồn rồi", "buồn quá", "buồn lắm", "buồn ghê",
+    "chán r", "chán rồi", "chán quá", "chán lắm", "không vui",
+    "lo lắng", "hồi hộp", "bồn chồn", "nhớ nhà",
+)
+
+
+def _hunger_reply(member=None) -> str:
+    if member:
+        addr = member.mi_calls_them
+        return (
+            f"Ôi {addr} đói rồi à 😄 Ở Phú Yên có nhiều chỗ ăn ngon lắm! "
+            f"{addr.capitalize()} thích ăn hải sản hay cơm bình dân hơn?"
+        )
+    return "Đói rồi à 😄 Phú Yên có nhiều quán ngon lắm! Bạn thích hải sản hay cơm bình dân?"
+
+
+def _fatigue_reply(member=None) -> str:
+    if member:
+        addr = member.mi_calls_them
+        return (
+            f"{addr.capitalize()} mệt rồi à 🥺 Nghỉ xíu đi, đừng cố quá. "
+            f"Cần tìm chỗ ngồi nghỉ hay về khách sạn không?"
+        )
+    return "Mệt rồi à 🥺 Nghỉ xíu đi nhé. Cần tìm chỗ ngồi nghỉ hay về phòng?"
+
+
+def _sad_reply(member=None) -> str:
+    if member:
+        addr = member.mi_calls_them
+        return f"{addr.capitalize()} ổn không? 🥺 Mi ở đây nè, kể Mi nghe đi."
+    return "Ổn không bạn? 🥺 Mi ở đây nè, kể Mi nghe đi nhé."
 
 
 
@@ -289,6 +344,28 @@ class TelegramOrchestrator:
                     _name_reply = "Mình là Mi 😊 Bạn đồng hành chuyến Phú Yên của nhóm — hỏi gì cứ hỏi nhé!"
                 if decision.allow_reply:
                     await self.telegram.send_message(chat.id, _name_reply)
+                return
+
+            # FAST PATH: Emotional signals — hunger, fatigue, sadness
+            # Bypass LLM entirely for common emotional one-liners
+            _norm_lower = _strip_diacritics(_t_lower)
+            if any(p in _t_lower or _strip_diacritics(p) in _norm_lower for p in _HUNGER_PATTERNS):
+                _emo_reply = _hunger_reply(_member)
+                await self.action_logger.log("emotional_fastpath", chat.id, user.id if user else 0, {"type": "hunger", "text": incoming_text})
+                if decision.allow_reply:
+                    await self.telegram.send_message(chat.id, _emo_reply)
+                return
+            if any(p in _t_lower or _strip_diacritics(p) in _norm_lower for p in _FATIGUE_PATTERNS):
+                _emo_reply = _fatigue_reply(_member)
+                await self.action_logger.log("emotional_fastpath", chat.id, user.id if user else 0, {"type": "fatigue", "text": incoming_text})
+                if decision.allow_reply:
+                    await self.telegram.send_message(chat.id, _emo_reply)
+                return
+            if any(p in _t_lower or _strip_diacritics(p) in _norm_lower for p in _SAD_PATTERNS):
+                _emo_reply = _sad_reply(_member)
+                await self.action_logger.log("emotional_fastpath", chat.id, user.id if user else 0, {"type": "sad", "text": incoming_text})
+                if decision.allow_reply:
+                    await self.telegram.send_message(chat.id, _emo_reply)
                 return
 
             # FAST PATH: deterministic shortcuts (sheet link, maps) — must run
@@ -645,6 +722,9 @@ class TelegramOrchestrator:
                     recovery_plan,
                     message_analysis=message_analysis,
                     trip_member=_member,
+                    chat_id=chat.id,
+                    user_lat=last_lat,
+                    user_lon=last_lon,
                 )
                 # Phase 5: enhance with Travel OS
                 response.text = self.companion.adapt_reply(response.text, companion_state, intent=intent_result.intent)
@@ -730,7 +810,7 @@ class TelegramOrchestrator:
                 try:
                     await self.telegram.send_message(
                         chat.id,
-                        "Mình bị lỗi nội bộ và đã ghi log. Bạn thử gửi lại sau nhé — nếu vẫn lỗi thì báo admin giúp.",
+                        random.choice(_MI_RECOVERY_MESSAGES),
                     )
                 except Exception:
                     logger.exception("failed_to_send_fallback_message chat_id=%s", chat.id)
@@ -801,6 +881,9 @@ class TelegramOrchestrator:
         recovery_plan,
         message_analysis: VietnameseMessageAnalysis | None = None,
         trip_member=None,
+        chat_id: int = 0,
+        user_lat: float | None = None,
+        user_lon: float | None = None,
     ) -> AssistantResponse:
         trip_state = self.trip_context.get_state()
         trip_context_str = self.trip_context.format_for_prompt(trip_state, companion_state=companion_state)
@@ -882,7 +965,7 @@ class TelegramOrchestrator:
             conversation_history,
             trip_context_str,
             interaction_guidance,
-            chat_id=chat.id,
+            chat_id=chat_id,
         )
         # ── Mi response shaping + button injection ────────────────────────────
         reply_markup = None
@@ -901,8 +984,8 @@ class TelegramOrchestrator:
             mi_response = mi.shape(
                 raw_reply=companion.text,
                 ctx=mi_ctx,
-                user_lat=last_lat if 'last_lat' in dir() else None,
-                user_lon=last_lon if 'last_lon' in dir() else None,
+                user_lat=user_lat,
+                user_lon=user_lon,
                 place_name=companion.place_name,
                 place_lat=place_lat,
                 place_lon=place_lon,
