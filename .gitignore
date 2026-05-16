@@ -8,3 +8,9 @@ backend/**/__pycache__/
 backend/telegram_ai_backend.egg-info/
 backend/node_modules/
 backend/.state/
+qa/**/__pycache__/
+qa/**/*.pyc
+qa/reports/
+qa/replays/
+qa/regression/results/
+qa/memory/qa_memory.json
