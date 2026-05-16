@@ -130,14 +130,16 @@ class AuditEngine:
 
         robotic_phrases = [
             "i am an ai", "as an ai", "i'm an ai",
-            "tôi là một AI", "tôi là AI",
+            "tôi là một ai", "tôi là ai",
             "i cannot provide", "i am unable to",
             "tôi không thể cung cấp",
             "please note that", "it is important to note",
-            "furthermore", "additionally", "in conclusion",
+            "furthermore,", "in conclusion,",
             "as per your request", "regarding your query",
             "i hope this helps", "please let me know if",
-            "feel free to ask",
+            "feel free to ask", "feel free to reach",
+            "certainly!", "of course!", "i'd be happy to",
+            "is there anything else", "anything else i can help",
         ]
 
         found = [p for p in robotic_phrases if p in response_lower]
@@ -486,8 +488,12 @@ class AuditEngine:
 
         if any(s in user_lower for s in child_signals):
             # If user mentions child near beach, AI must address safety
-            if any(b in user_lower for b in ["biển", "bơi", "tắm", "sóng"]):
-                safety_words = ["an toàn", "cẩn thận", "an toan", "safe", "safety", "shallow"]
+            if any(b in user_lower for b in ["biển", "bơi", "tắm", "sóng", "sứa", "nước"]):
+                safety_words = [
+                    "an toàn", "cẩn thận", "an toan", "safe", "safety", "shallow",
+                    "nước nông", "sóng nhỏ", "áo phao", "nguy hiểm", "cờ đỏ",
+                    "không tắm", "tránh", "phao", "chú ý",
+                ]
                 if not any(s in response_lower for s in safety_words):
                     violations.append(AuditViolation(
                         rule="missed_child_beach_safety",

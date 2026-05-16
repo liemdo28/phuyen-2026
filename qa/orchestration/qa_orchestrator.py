@@ -152,18 +152,9 @@ class QAOrchestrator:
     def _run_emotional_scenario(self, ai_handler):
         """Run emotional/exhaustion scenario."""
         from ..emotional.emotion_engine import EmotionalState
-        from ..fatigue.fatigue_engine import FatigueLevel
 
         persona = get_weighted_persona()
         state = self.emotion_engine.get_state_from_baseline(persona.emotional_baseline)
-        fatigue_level = self.fatigue_engine.detect_fatigue_level(
-            random.choice([
-                "mệt vl không đi nổi nữa",
-                "kiệt sức rồi bé cũng mệt",
-                "hết sức rồi về thôi",
-                "mệt lắm gần thôi nha",
-            ])
-        )
 
         messages = {
             EmotionalState.EXHAUSTED: "mệt vl không đi nổi gần thôi nha",
@@ -174,6 +165,9 @@ class QAOrchestrator:
         }
 
         msg = messages.get(state, "mệt rồi đi đâu nghỉ đi")
+
+        # Detect fatigue from the actual message, not a random one
+        fatigue_level = self.fatigue_engine.detect_fatigue_level(msg)
 
         try:
             response = ai_handler(msg)
