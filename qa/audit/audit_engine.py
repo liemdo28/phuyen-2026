@@ -4,6 +4,7 @@ Minimal autonomous QA audit engine.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from enum import Enum
 
@@ -38,6 +39,21 @@ class AuditReport:
         return "FAIL" if self.violations else "PASS"
 
 
+# ── Audit helpers ─────────────────────────────────────────────────────────────
+
+# Expense patterns: "ăn hết 150k", "tiêu 80k", "đổ xăng 100k"
+_EXPENSE_RE = re.compile(
+    r"(ăn\s*hết|an\s*het|tiêu|tieu|đổ xăng|do xang|mua|chi)\s*\d",
+    re.IGNORECASE,
+)
+
+# Negated "đâu" — idiomatic "don't want to go anywhere" (NOT a location query)
+_NEGATED_DAU_RE = re.compile(
+    r"(không|khong|chẳng|chang|chả|cha)\s+\w*\s*(đâu|dau)\b",
+    re.IGNORECASE,
+)
+
+
 class AuditEngine:
     """Heuristic QA auditor for replayed scenarios."""
 
@@ -52,8 +68,10 @@ class AuditEngine:
     ) -> AuditReport:
         response = (ai_response or "").strip()
         text = response.casefold()
+        msg = user_message.casefold()
         violations: list[Violation] = []
 
+        # ── Empty response ────────────────────────────────────────────────────
         if not response:
             violations.append(
                 Violation(
@@ -65,12 +83,24 @@ class AuditEngine:
                 )
             )
 
+        # ── Robotic / corporate tone ──────────────────────────────────────────
+        # English markers (from LLM raw output leak) + Vietnamese markers
         robotic_markers = [
+            # English (LLM sometimes slips into English)
             "as an ai",
             "i hope this helps",
-            "furthermore",
+            "furthermore,",
             "please feel free",
             "contact support",
+            "best regards",
+            "kind regards",
+            # Vietnamese corporate / templated phrases
+            "xin chào quý khách",
+            "chúng tôi rất tiếc",
+            "vui lòng liên hệ",
+            "đội ngũ hỗ trợ",
+            "tôi hy vọng điều này giúp ích",
+            "như một trợ lý ai",
         ]
         if any(marker in text for marker in robotic_markers):
             violations.append(
@@ -83,6 +113,7 @@ class AuditEngine:
                 )
             )
 
+        # ── Choice overload ───────────────────────────────────────────────────
         if len(response) > 700:
             violations.append(
                 Violation(
@@ -94,9 +125,14 @@ class AuditEngine:
                 )
             )
 
-        hunger_markers = ("doi", "đói", "ăn", "an", "quán", "quan", "chè", "che", "bia")
-        if any(marker in user_message.casefold() for marker in hunger_markers):
-            food_markers = ("ăn", "quán", "món", "chè", "bia", "cafe", "hải sản", "bun", "bún")
+        # ── Missed food need ──────────────────────────────────────────────────
+        # Skip if message is clearly an expense record (e.g. "ăn hết 150k")
+        is_expense = bool(_EXPENSE_RE.search(user_message))
+        hunger_markers = ("doi", "đói", "ăn gì", "an gi", "ăn ở đâu", "quán", "quan",
+                          "chè", "che", "bé đói", "be doi", "chưa ăn")
+        if not is_expense and any(marker in msg for marker in hunger_markers):
+            food_markers = ("ăn", "quán", "món", "chè", "bia", "cafe", "hải sản",
+                            "bun", "bún", "gần", "khu nào", "cho biết")
             if not any(marker in text for marker in food_markers):
                 violations.append(
                     Violation(
@@ -108,16 +144,28 @@ class AuditEngine:
                     )
                 )
 
-        location_markers = ("đâu", "o dau", "ở đâu", "gần", "gan", "maps", "trạm", "tram")
-        if any(marker in user_message.casefold() for marker in location_markers):
-            geo_markers = ("location", "maps", "vị trí", "share", "địa điểm", "dia diem", "gần")
+        # ── Missed location guidance ──────────────────────────────────────────
+        # Only trigger when user is genuinely asking WHERE, not idioms like
+        # "không muốn đi đâu cả" (= "don't want to go anywhere")
+        location_markers = ("ở đâu", "o dau", "đi đâu", "di dau", "chỗ nào", "cho nao",
+                            "gần đây", "gan day", "maps", "trạm", "tram")
+        has_location_intent = any(marker in msg for marker in location_markers)
+        # Suppress if it's a negation ("không muốn đi đâu")
+        is_negated_location = bool(_NEGATED_DAU_RE.search(user_message))
+        # Suppress if the message is about movement resistance ("gần thôi" = "nearby only")
+        is_resistance = any(w in msg for w in ["gần thôi", "gan thoi", "không xa", "khong xa",
+                                                "ngại đi xa", "ngai di xa", "lười đi", "luoi di"])
+
+        if has_location_intent and not is_negated_location and not is_resistance:
+            geo_markers = ("location", "maps", "vị trí", "share", "địa điểm", "dia diem",
+                           "gần", "khu nào", "đang ở", "cho biết", "chỉ đường")
             if not any(marker in text for marker in geo_markers):
                 violations.append(
                     Violation(
                         rule="missed_location_guidance",
                         dimension="routing_quality",
-                        reason="Query có yếu tố vị trí nhưng response không điều hướng theo địa điểm.",
-                        fix_suggestion="Xin vị trí hoặc địa điểm cụ thể khi thiếu geolocation.",
+                        reason="User hỏi địa điểm nhưng response không điều hướng theo vị trí.",
+                        fix_suggestion="Hỏi khu vực đang ở hoặc cung cấp gợi ý địa điểm cụ thể.",
                         severity=Severity.MEDIUM,
                     )
                 )

@@ -214,15 +214,45 @@ def _heuristic_companion_reply(text: str) -> str:
         "rối", "không biết", "đi đâu", "làm gì", "bây giờ sao", "sao bây giờ",
     ]):
         return "Bình tĩnh nào. Cho mình biết đang ở đâu và mấy giờ, mình tính cho ngay."
-    # Recovery / rest seeking
+    # Recovery / rest / quiet seeking
     if any(w in t for w in [
         "muốn nghỉ", "cần nghỉ", "đi healing", "muốn reset", "kiếm chỗ chill",
         "muốn yên tĩnh", "không muốn đi xa",
+        "thư giãn", "thu gian", "không ồn", "khong on",
+        "cần chỗ ngồi", "can cho ngoi", "chỗ ngồi yên", "chỗ yên tĩnh",
     ]):
-        return "Nghe có vẻ cần xả hơi một chút. Cafe Biển Bãi Xép view đẹp, gió mát, không đông — ngồi ngắm biển thư giãn là hợp nhất lúc này."
+        return "Nghe có vẻ cần xả hơi. Cafe Biển Bãi Xép view đẹp, gió mát, không đông — ngồi ngắm biển thư giãn là hợp nhất lúc này."
+
+    # Movement resistance / nearby-only request
+    if any(w in t for w in [
+        "gần thôi", "gan thoi", "gần đây thôi", "gan day thoi",
+        "lười đi xa", "luoi di xa", "ngại đi xa", "ngai di xa",
+        "không muốn đi xa", "khong muon di xa",
+        "đi bộ thôi", "di bo thoi",
+    ]):
+        return "Hiểu rồi, gần thôi nhé. Cho mình biết đang ở khu nào (trung tâm, cảng, Sông Cầu?) mình tìm điểm gần nhất — ăn, cafe hay hoạt động gì?"
+
+    # Expense / spending queries
+    if any(w in t for w in [
+        "ăn hết", "an het", "tiêu hôm nay", "tieu hom nay",
+        "tiêu bao nhiêu", "tieu bao nhieu", "hôm nay tiêu", "hom nay tieu",
+        "đổ xăng", "do xang", "chi tiêu", "chi tieu",
+        "ghi lại", "ghi nợ", "ghi chi", "tổng chi",
+    ]):
+        return "Ghi lại nhé. Khoản gì vậy — ăn uống, đi lại, hay mua sắm? Nói số tiền luôn mình lưu cho."
+
+    # Itinerary / schedule query
+    if any(w in t for w in [
+        "lịch trình", "lich trinh", "kế hoạch hôm nay", "ke hoach hom nay",
+        "hôm nay làm gì", "hom nay lam gi", "đi đâu hôm nay", "di dau hom nay",
+        "buổi chiều đi đâu", "buổi sáng đi đâu",
+    ]):
+        return "Hôm nay mình gợi ý: sáng đi biển sớm, trưa nghỉ + ăn hải sản, chiều cafe hoặc chụp ảnh, tối đi dạo phố. Đang ở khu nào để mình chỉ cụ thể hơn?"
+
     # Excitement / exploration
     if any(w in t for w in [
         "hào hứng", "hype", "thích quá", "muốn khám phá", "đi đâu vui",
     ]):
         return "Mood tốt đấy! Ghé Gành Đá Đĩa hoặc Đầm Ô Loan — 2 địa điểm đỉnh nhất Phú Yên. Mình chỉ cụ thể hơn nếu bạn cho biết đang ở đâu nhé."
+
     return "Mình đây, cần gì cứ nói nhé!"
