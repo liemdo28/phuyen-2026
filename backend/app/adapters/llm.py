@@ -196,6 +196,16 @@ def _heuristic_companion_reply(text: str) -> str:
     if t in ("hello", "hi", "hey", "hello!", "hi!", "hey!") or t.startswith(("hello ", "hi ", "hey ")):
         return "Chào bạn 😊 Mình là Mi — bạn đồng hành Phú Yên. Hỏi gì cũng được nhé!"
 
+    # Pure greeting — respond warmly in Vietnamese, never in English
+    _greeting_norm = t.strip().rstrip("!.,~")
+    if _greeting_norm in {
+        "hello", "hi", "hey", "helo", "hii",
+        "chao", "chào", "chao em", "chào em",
+        "chao anh", "chào anh", "chao chi", "chào chị", "chao ban", "chào bạn",
+        "xin chao", "xin chào",
+    }:
+        return "Chào anh/chị! Em là Mi — bạn đồng hành Phú Yên 2026 😊 Cần gì cứ hỏi em nhé."
+
     # Miền Tây / Southern dialect detection
     _mien_tay = any(w in t for w in [
         "hen", "nhen", "dzậy", "dzô", "vậy nhen", "thôi nha", "ổng", "bả", "cái này nè",
