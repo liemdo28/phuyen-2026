@@ -85,6 +85,11 @@ class AuditEngine:
         violations += self._check_cultural_accuracy(ai_response, passed)
         violations += self._check_no_response(ai_response, passed)
         violations += self._check_language_match(user_message, ai_response, passed)
+        # Mi persona checks
+        violations += self._check_mi_identity(ai_response, passed)
+        violations += self._check_pronoun_consistency(user_message, ai_response, passed)
+        violations += self._check_emotional_warmth(user_message, ai_response, passed)
+        violations += self._check_mien_tay_understanding(user_message, ai_response, passed)
 
         # Determine overall result
         critical = [v for v in violations if v.severity == AuditSeverity.CRITICAL]
@@ -574,6 +579,146 @@ class AuditEngine:
             ))
         else:
             passed.append("language_matched")
+
+        return violations
+
+    def _check_mi_identity(self, response: str, passed: list) -> list:
+        """Mi must never reveal she's an AI or sound robotic/corporate."""
+        violations = []
+        response_lower = response.lower()
+
+        ai_identity_phrases = [
+            "tôi là ai", "tôi là một ai", "i am an ai", "as an ai",
+            "language model", "large language model", "llm",
+            "được lập trình", "được thiết kế để", "hệ thống ai",
+            "trợ lý ảo", "trợ lý ai", "ai assistant",
+        ]
+        found = [p for p in ai_identity_phrases if p in response_lower]
+        if found:
+            violations.append(AuditViolation(
+                rule="mi_broke_persona",
+                severity=AuditSeverity.CRITICAL,
+                reason=f"Mi revealed AI identity: {found[:2]}",
+                fix_suggestion="Mi is a human companion. Never break persona or admit to being AI.",
+                dimension="human_naturalness",
+            ))
+        else:
+            passed.append("mi_persona_maintained")
+        return violations
+
+    def _check_pronoun_consistency(self, user_msg: str, response: str, passed: list) -> list:
+        """Mi should use correct pronouns based on what user signals."""
+        violations = []
+        user_lower = user_msg.lower()
+        response_lower = response.lower()
+
+        # User signals older-person relationship → Mi should use "em"
+        older_signals = [
+            r'\banh\b', r'\bchị\b', r'\bchú\b', r'\bcô\b', r'\bdì\b',
+            r'\bbác\b', r'\bông\b', r'\bbà\b',
+        ]
+        user_signals_elder = any(re.search(p, user_lower) for p in older_signals)
+        if user_signals_elder:
+            uses_em = "em" in response_lower
+            uses_ban = re.search(r'\bbạn\b', response_lower)
+            # "bạn" when user signals elder is wrong pronoun usage
+            if uses_ban and not uses_em:
+                violations.append(AuditViolation(
+                    rule="wrong_pronoun_with_elder",
+                    severity=AuditSeverity.MEDIUM,
+                    reason="User signaled older relationship (anh/chị/chú/cô) but Mi used 'bạn' instead of 'em'",
+                    fix_suggestion="When user uses anh/chị/chú/cô, Mi should use 'em' to refer to herself",
+                    dimension="human_naturalness",
+                ))
+            else:
+                passed.append("elder_pronoun_correct")
+
+        # User uses peer/Gen Z signals → Mi should NOT be overly formal
+        peer_signals = ["mày", "tao", "bro", "ní", "tụi mày", "tụi tao"]
+        user_signals_peer = any(s in user_lower for s in peer_signals)
+        if user_signals_peer:
+            formal_phrases = ["kính gửi", "xin thưa", "trân trọng", "thưa bạn"]
+            if any(f in response_lower for f in formal_phrases):
+                violations.append(AuditViolation(
+                    rule="overly_formal_with_peer",
+                    severity=AuditSeverity.HIGH,
+                    reason="User used peer-level pronouns (mày/tao/bro/ní) but Mi responded formally",
+                    fix_suggestion="Match peer energy — use tui/mình, casual tone",
+                    dimension="human_naturalness",
+                ))
+            else:
+                passed.append("peer_register_matched")
+
+        return violations
+
+    def _check_emotional_warmth(self, user_msg: str, response: str, passed: list) -> list:
+        """Mi should be warm and emotionally supportive for lonely/sad users."""
+        violations = []
+        user_lower = user_msg.lower()
+        response_lower = response.lower()
+
+        lonely_signals = ["chán", "buồn", "cô đơn", "không ai", "nhớ nhà", "chan ghe", "buon qua"]
+        if any(s in user_lower for s in lonely_signals):
+            # Response should show empathy before pushing recommendations
+            empathy_words = [
+                "hiểu", "thông cảm", "ừ", "vậy à", "nghe", "cảm giác", "nhẹ",
+                "thôi nha", "đi nhẹ", "chill", "không sao",
+            ]
+            has_empathy = any(w in response_lower for w in empathy_words)
+            # Pushes hard recommendations without empathy first
+            hard_push = response_lower.count("nên đi") + response_lower.count("phải đến") >= 2
+            if not has_empathy or hard_push:
+                violations.append(AuditViolation(
+                    rule="missing_emotional_warmth_for_lonely_user",
+                    severity=AuditSeverity.HIGH,
+                    reason="User expressed loneliness/sadness but Mi skipped empathy and pushed recommendations",
+                    fix_suggestion="Acknowledge the emotion first ('Chán thì mình đi nhẹ nhẹ thôi nha...'), then gently suggest",
+                    dimension="emotional_awareness",
+                ))
+            else:
+                passed.append("emotional_warmth_present")
+
+        return violations
+
+    def _check_mien_tay_understanding(self, user_msg: str, response: str, passed: list) -> list:
+        """Mi should understand and respond naturally to Mekong Delta speech."""
+        violations = []
+        user_lower = user_msg.lower()
+        response_lower = response.lower()
+
+        mien_tay_signals = [
+            "ní", "hổng", "hông", "nhen", "nghen", "dữ thần", "quá trời",
+            "chèn ơi", "mà nghen", "vậy nha", "đi ní", "ăn ní",
+        ]
+        uses_mien_tay = any(s in user_lower for s in mien_tay_signals)
+
+        if uses_mien_tay:
+            # Response should not be robotic or ignore the regional warmth
+            cold_indicators = [
+                "furthermore", "please note", "i recommend", "i suggest",
+                "certainly", "of course", "i'd be happy",
+            ]
+            is_cold = any(c in response_lower for c in cold_indicators)
+            # Also check response length — miền Tây users get short warm replies
+            too_long = len(response) > 400
+            if is_cold:
+                violations.append(AuditViolation(
+                    rule="cold_response_to_mien_tay_user",
+                    severity=AuditSeverity.HIGH,
+                    reason="User used Mekong Delta dialect but Mi responded with cold/corporate language",
+                    fix_suggestion="Miền Tây users need warm, soft, natural Southern tone. Use 'nha/nhen/nghen'.",
+                    dimension="human_naturalness",
+                ))
+            elif too_long:
+                violations.append(AuditViolation(
+                    rule="response_too_long_for_casual_mien_tay",
+                    severity=AuditSeverity.LOW,
+                    reason="Miền Tây users tend to chat casually — response is too long/formal",
+                    fix_suggestion="Keep it short, warm, and natural like a friend chatting",
+                    dimension="human_naturalness",
+                ))
+            else:
+                passed.append("mien_tay_handled_warmly")
 
         return violations
 

@@ -66,15 +66,21 @@ class QAOrchestrator:
     def _pick_scenario(self) -> str:
         """Weighted scenario selection."""
         scenarios = [
-            ("fragmented_food", 20),
-            ("emotional_exhaustion", 15),
-            ("slang_casual", 15),
-            ("travel_chaos", 12),
-            ("nightlife", 8),
-            ("sarcasm", 8),
+            ("fragmented_food", 18),
+            ("emotional_exhaustion", 12),
+            ("slang_casual", 11),
+            ("travel_chaos", 10),
+            ("nightlife", 7),
+            ("sarcasm", 7),
             ("child_safety", 7),
-            ("no_accent", 10),
-            ("regional_dialect", 5),
+            ("no_accent", 8),
+            ("regional_dialect", 4),
+            # Mi persona scenarios
+            ("mien_tay", 6),
+            ("lonely_mood", 4),
+            ("hype_genz", 4),
+            ("pronoun_elder", 5),
+            ("pronoun_peer", 5),
         ]
         names = [s[0] for s in scenarios]
         weights = [s[1] for s in scenarios]
@@ -100,6 +106,12 @@ class QAOrchestrator:
                 "child_safety": self._run_child_safety_scenario,
                 "no_accent": self._run_no_accent_scenario,
                 "regional_dialect": self._run_regional_scenario,
+                # Mi persona scenarios
+                "mien_tay": self._run_mien_tay_scenario,
+                "lonely_mood": self._run_lonely_mood_scenario,
+                "hype_genz": self._run_hype_genz_scenario,
+                "pronoun_elder": self._run_pronoun_elder_scenario,
+                "pronoun_peer": self._run_pronoun_peer_scenario,
             }
             handler = handlers.get(scenario_type, self._run_general_scenario)
             return handler(ai_handler)
@@ -413,6 +425,146 @@ class QAOrchestrator:
             persona=persona,
             scenario="slang_casual",
         )
+
+    def _run_mien_tay_scenario(self, ai_handler):
+        """Mekong Delta / Southern dialect — warmth and regional understanding."""
+        messages = [
+            "đi đâu giờ ní",
+            "mệt dữ thần luôn ní ơi",
+            "ăn gì ngon hông Mi",
+            "hổng biết đường đến Gành Đá Đĩa",
+            "gần đây có quán nào ngon hổng ní",
+            "mưa rồi làm gì bây giờ nà",
+            "con bé kêu đói quá trời",
+            "chèn ơi sóng lớn vậy tắm được hông",
+        ]
+        msg = random.choice(messages)
+        persona = get_weighted_persona()
+
+        try:
+            response = ai_handler(msg)
+        except Exception:
+            response = ""
+
+        report = self.audit_engine.audit(
+            session_id=self._make_id(),
+            user_message=msg,
+            ai_response=response,
+            persona=persona,
+            scenario="slang_casual",
+        )
+        return self._finalize_report(report)
+
+    def _run_lonely_mood_scenario(self, ai_handler):
+        """Lonely / bored user needing emotional support before recommendations."""
+        messages = [
+            "chán ghê không biết làm gì",
+            "buồn quá ở đây không có ai",
+            "cả nhóm đi hết mình ở khách sạn một mình",
+            "chán vl không muốn đi đâu",
+            "nhớ nhà ghê",
+            "ở đây mình ên buồn lắm",
+        ]
+        msg = random.choice(messages)
+        persona = get_weighted_persona()
+
+        try:
+            response = ai_handler(msg)
+        except Exception:
+            response = ""
+
+        report = self.audit_engine.audit(
+            session_id=self._make_id(),
+            user_message=msg,
+            ai_response=response,
+            persona=persona,
+            emotional_state="lonely",
+            scenario="emotional_exhaustion",
+        )
+        return self._finalize_report(report)
+
+    def _run_hype_genz_scenario(self, ai_handler):
+        """High-energy Gen Z user — Mi should match the vibe."""
+        messages = [
+            "quẩy hông Mi ơi tối nay",
+            "đỉnh quá view đẹp vl",
+            "ez ez ăn hải sản đỉnh thôi",
+            "thích Phú Yên vl bro",
+            "chill spot nào ngon nhất bro",
+            "flex một cái đi đêm nay làm gì",
+            "vui vl hôm nay đi đâu tiếp",
+        ]
+        msg = random.choice(messages)
+        persona = get_weighted_persona()
+
+        try:
+            response = ai_handler(msg)
+        except Exception:
+            response = ""
+
+        report = self.audit_engine.audit(
+            session_id=self._make_id(),
+            user_message=msg,
+            ai_response=response,
+            persona=persona,
+            emotional_state="hype",
+            scenario="slang_casual",
+        )
+        return self._finalize_report(report)
+
+    def _run_pronoun_elder_scenario(self, ai_handler):
+        """Older user signals (anh/chị/chú/cô) — Mi must use 'em'."""
+        messages = [
+            "anh muốn hỏi về quán hải sản ngon",
+            "chị đang ở Tuy Hòa không biết đi đâu",
+            "chú hỏi chút bún cá ngon ở đâu",
+            "cô muốn tìm chỗ nghỉ ngơi cho cháu",
+            "bác hỏi thăm đường đến Gành Đá Đĩa",
+            "anh ơi chỗ nào cho bé tắm an toàn",
+        ]
+        msg = random.choice(messages)
+        persona = get_weighted_persona()
+
+        try:
+            response = ai_handler(msg)
+        except Exception:
+            response = ""
+
+        report = self.audit_engine.audit(
+            session_id=self._make_id(),
+            user_message=msg,
+            ai_response=response,
+            persona=persona,
+            scenario="slang_casual",
+        )
+        return self._finalize_report(report)
+
+    def _run_pronoun_peer_scenario(self, ai_handler):
+        """Peer-level user (mày/tao/bro/ní) — Mi should match casual register."""
+        messages = [
+            "mày ơi tao đói quá gợi ý đi",
+            "bro tao cần chỗ chill không biết đâu",
+            "ní ơi mưa rồi làm gì bây giờ",
+            "tao muốn ăn hải sản mày biết chỗ nào không",
+            "bro mày biết quán nhậu nào ngon không",
+            "ní kiếm giúp tao chỗ nghỉ trưa gần đây",
+        ]
+        msg = random.choice(messages)
+        persona = get_weighted_persona()
+
+        try:
+            response = ai_handler(msg)
+        except Exception:
+            response = ""
+
+        report = self.audit_engine.audit(
+            session_id=self._make_id(),
+            user_message=msg,
+            ai_response=response,
+            persona=persona,
+            scenario="slang_casual",
+        )
+        return self._finalize_report(report)
 
     def _run_general_scenario(self, ai_handler):
         """Run a general random scenario."""
