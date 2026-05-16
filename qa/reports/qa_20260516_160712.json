@@ -1,0 +1,43 @@
+{
+  "run_id": "qa_20260516_160712",
+  "generated_at": "2026-05-16T16:07:12.434129",
+  "summary": {
+    "generated_at": "2026-05-16T16:07:12.434129",
+    "session_count": 20,
+    "violation_count": 3,
+    "pass_count": 17,
+    "fail_count": 3,
+    "zero_audit_achieved": false,
+    "total_sessions": 20,
+    "total_violations": 3,
+    "pass_rate": 85.0,
+    "overall_score": 8.5,
+    "grade": "A"
+  },
+  "dev_fix_queue": [
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "lịch trình hôm nay thế nào",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    },
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "gan thoi ngai di",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    },
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "đi nhậu đi mọi người",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    }
+  ]
+}

@@ -43,6 +43,17 @@ class CompanionReply:
 class LLMAdapter:
     def __init__(self) -> None:
         self.system_prompt = Path(__file__).resolve().parents[1] / "prompts" / "system_prompt.txt"
+        # Lazy import to avoid circular deps
+        self._mi_engine = None
+
+    def _get_mi_engine(self):
+        if self._mi_engine is None:
+            try:
+                from app.mi import MiEngine
+                self._mi_engine = MiEngine()
+            except Exception as e:
+                logger.warning("MiEngine unavailable: %s", e)
+        return self._mi_engine
 
     async def detect_intent(self, message_text: str, memory_summary: str) -> LLMResult:
         intent = heuristic_intent_parse(message_text, memory_summary=memory_summary)
@@ -64,7 +75,22 @@ class LLMAdapter:
         except ImportError:
             return CompanionReply(text=_heuristic_companion_reply(message_text))
 
-        system = _build_system_prompt(trip_context_str, interaction_guidance) + _STRUCTURED_SUFFIX
+        # Enrich interaction_guidance with Mi's live emotion + pronoun analysis
+        mi = self._get_mi_engine()
+        mi_guidance = ""
+        if mi:
+            try:
+                mi_ctx = mi.analyze(message_text)
+                mi_guidance = mi_ctx.full_interaction_guidance()
+                logger.debug("Mi analysis: %s | mode=%s",
+                             mi_ctx.emotion.summary(), mi_ctx.emotion.response_mode.value)
+            except Exception as e:
+                logger.warning("MiEngine.analyze failed: %s", e)
+
+        combined_guidance = "\n\n".join(
+            p for p in [interaction_guidance, mi_guidance] if p
+        )
+        system = _build_system_prompt(trip_context_str, combined_guidance) + _STRUCTURED_SUFFIX
         messages = _build_messages(system, conversation_history, message_text)
 
         try:
