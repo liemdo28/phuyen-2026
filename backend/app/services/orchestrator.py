@@ -863,14 +863,14 @@ class TelegramOrchestrator:
     ) -> str:
         limited = self._truncate_option_lines(text, calm.max_option_count)
         prefix = self._calm_prefix(brain, calm, recovery)
-        guidance = self._select_live_guidance(intent, brain, calm, recovery, society)
+        # NOTE: _select_live_guidance() produces internal orchestration signals —
+        # they are used upstream as system prompt context (interaction_guidance),
+        # NOT appended to the user-facing reply.
 
         parts: list[str] = []
         if prefix:
             parts.append(prefix)
         parts.append(limited.strip())
-        if guidance:
-            parts.append("Giữ nhịp nhẹ:\n" + "\n".join(f"• {line}" for line in guidance))
         return "\n\n".join(part for part in parts if part).strip()
 
     def _calm_prefix(self, brain, calm, recovery) -> str:
