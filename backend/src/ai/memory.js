@@ -163,7 +163,7 @@ export function buildContextString(userId) {
     parts.push(`Trip Day: ${session.tripContext.currentDay}`);
   }
 
-  return parts.join('\\n');
+  return parts.join('\n');
 }
 
 /**

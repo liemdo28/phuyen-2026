@@ -4,7 +4,7 @@
 
 import { getAIModel } from './model.js';
 import { detectIntent, detectLanguage, intentToHandler } from './intent.js';
-import { buildContextString, getHistoryForAI, learnPreferences, getSession } from './memory.js';
+import { buildContextString, getHistoryForAI, learnPreferences, getSession, updateTripContext } from './memory.js';
 import {
   TRAVEL_ASSISTANT_PROMPT,
   FOOD_RECOMMENDATION_PROMPT,
@@ -237,21 +237,23 @@ async function handlePackingIntent(text, lang) {
 }
 
 async function generateGeneralResponse(text, lang, userContext, additionalData, history) {
-  const tripData = `
-Trip: Phú Yên 2026 (May 23–27)
-Group: 7 adults + 1 child (4 years old)
-Vehicle: Kia Carnival (Diesel)
-Context: ${userContext}
-Additional data: ${JSON.stringify(additionalData)}
-  `.trim();
+  const session = getSession(additionalData.userId);
+  const loc = session?.tripContext?.currentLocation;
+  const locationLine = loc
+    ? `User's saved location: ${loc.name} (lat: ${loc.lat}, lon: ${loc.lon})`
+    : 'User location: not shared yet';
 
-  const prompt = `User message: "${text}"
-Language: ${lang}
-User context:\n${tripData}
+  const prompt = [
+    `User message: "${text}"`,
+    `Language: ${lang}`,
+    locationLine,
+    `User preferences: ${userContext}`,
+    additionalData.weather
+      ? `Current weather in Phú Yên: ${additionalData.weather.description}, ${additionalData.weather.temp}°C`
+      : '',
+  ].filter(Boolean).join('\n');
 
-Respond as a helpful, friendly local travel guide. Be conversational and specific.`;
-
-  return await ai.complete(prompt, TRAVEL_ASSISTANT_PROMPT);
+  return await ai.complete(prompt, TRAVEL_ASSISTANT_PROMPT, history);
 }
 
 async function gatherAdditionalContext(context, intent, userId) {
@@ -267,8 +269,8 @@ async function gatherAdditionalContext(context, intent, userId) {
 
     // Get nearby places if location available
     if (context.location || intent.subIntents?.includes('nearby')) {
-      const lat = context.location?.latitude || 13.0955;
-      const lon = context.location?.longitude || 109.3028;
+      const lat = context.location?.lat || 13.0955;
+      const lon = context.location?.lon || 109.3028;
       try {
         data.nearbyPlaces = await placesService.getNearbyPlaces(lat, lon);
       } catch (e) { /* ignore */ }
@@ -282,7 +284,6 @@ async function gatherAdditionalContext(context, intent, userId) {
 
 function getSessionContext(userId) {
   try {
-    const { getSession } = require('./memory.js');
     return getSession(userId);
   } catch (e) {
     return null;

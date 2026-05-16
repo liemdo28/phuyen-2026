@@ -18,18 +18,16 @@ const bot = new Telegraf(config.telegram.token);
 bot.start(async (ctx) => {
   const firstName = ctx.from.first_name || 'bạn';
   const userId = String(ctx.from.id);
-  
+
   await ctx.reply(
-    `👋 Xin chào ${firstName}! Mình là AI Travel Assistant cho chuyến Phú Yên 2026!\n\n` +
-    `🌴 <b>Chuyến đi:</b> 23–27/05/2026 · 7 người · 1 bé 4 tuổi\n\n` +
-    `Mình có thể giúp bạn:\n` +
-    `🍜 <b>Tìm quán ăn</b> — gửi vị trí rồi hỏi\n` +
-    `🌤️ <b>Thời tiết</b> — dự báo cho Phú Yên\n` +
-    `🗺️ <b>Địa điểm gần</b> — gửi vị trí để tìm\n` +
-    `📅 <b>Lịch trình</b> — xem chi tiết từng ngày\n` +
-    `💰 <b>Chi phí dự kiến</b> — ước tính cho cả nhà\n` +
-    `📦 <b>Đồ cần đem</b> — checklist cho chuyến đi\n\n` +
-    `Nhắn tự nhiên bằng tiếng Việt, Anh, Nhật, Hàn, Trung đều được!`,
+    `Ơ ${firstName} ơi 👋 Mình là Mi — bạn đồng hành chuyến Phú Yên 23–27/5 nha!\n\n` +
+    `Nhắn tự nhiên thôi, hỏi gì cũng được:\n` +
+    `🍜 <b>Ăn gì</b> — quán local ngon, không tourist trap\n` +
+    `📍 <b>Gần đây có gì</b> — gửi vị trí rồi hỏi\n` +
+    `🌤️ <b>Trời hôm nay</b> — có mưa không, đi được không\n` +
+    `📅 <b>Lịch trình</b> — /lichtrinh để xem chi tiết\n` +
+    `🚨 <b>Khẩn cấp</b> — nhắn ngay, mình lo\n\n` +
+    `Nhắn tiếng Việt, Anh, thậm chí không dấu đều được 😊`,
     { parse_mode: 'HTML' }
   );
 });
@@ -96,8 +94,7 @@ bot.command('reset', async (ctx) => {
 bot.on('location', async (ctx) => {
   const userId = String(ctx.from.id);
   const { latitude, longitude } = ctx.message.location;
-  
-  // Save location to session
+
   updateTripContext(userId, {
     currentLocation: {
       lat: latitude,
@@ -105,13 +102,11 @@ bot.on('location', async (ctx) => {
       name: 'Vị trí hiện tại',
     },
   });
-  
+
   await ctx.reply(
-    `📍 Đã lưu vị trí của bạn!\n\n` +
-    `Bây giờ hỏi mình những câu như:\n` +
+    `📍 Mi lưu vị trí rồi nha! Giờ hỏi gì cũng được:\n` +
     `• <b>quán ăn gần nhất</b>\n` +
     `• <b>cafe chill gần đây</b>\n` +
-    `• <b>quán trên đường về</b>\n` +
     `• <b>hải sản ngon xung quanh</b>`,
     { parse_mode: 'HTML' }
   );
@@ -130,13 +125,11 @@ bot.on('photo', async (ctx) => {
     const photo = ctx.message.photo[ctx.message.photo.length - 1];
     const fileLink = await bot.telegram.getFileLink(photo.file_id);
     
-    // For receipt reading, use AI vision
-    // For now, respond with guidance
     const responses = {
-      vi: `📸 Mình nhận được ảnh!\n\nNếu là <b>hoá đơn</b> → nhắn: \"<b>đọc hoá đơn</b>\" để mình đọc số tiền.\nNếu là <b>địa điểm</b> → mình có thể nhận diện nếu bạn hỏi thêm!\nNếu là <b>thực đơn</b> → nhắn \"<b>dịch thực đơn này</b>\" để mình dịch.`,
-      en: `📸 Got your photo!\n\nIf it's a <b>receipt</b> → say \"<b>read receipt</b>\"\nIf it's a <b>place</b> → I can recognize it!\nIf it's a <b>menu</b> → say \"<b>translate this menu</b>\"`,
+      vi: `📸 Mi nhận ảnh rồi!\n\nHoá đơn → nhắn "<b>đọc hoá đơn</b>"\nThực đơn → nhắn "<b>dịch thực đơn này</b>"\nĐịa điểm → hỏi thêm, mình nhận ra được nha!`,
+      en: `📸 Got your photo! Say "<b>read receipt</b>", "<b>translate menu</b>", or ask about the place!`,
     };
-    
+
     await ctx.reply(responses[lang] || responses.vi, { parse_mode: 'HTML' });
   } catch (e) {
     console.error('Photo handler error:', e);
@@ -157,10 +150,10 @@ bot.on('voice', async (ctx) => {
     
     // Download and convert audio
     const responses = {
-      vi: `🎤 Tính năng chuyển giọng nói đang được cập nhật.\n\nBạn có thể nhắn văn bản thay thế, mình sẽ trả lời ngay!`,
-      en: `🎤 Voice message support is being updated.\n\nPlease type your message as text and I'll respond right away!`,
+      vi: `🎤 Voice chưa hỗ trợ nha — nhắn chữ thôi, Mi trả lời ngay!`,
+      en: `🎤 Voice isn't supported yet — just type it and I'll reply!`,
     };
-    
+
     await ctx.reply(responses[lang] || responses.vi);
   } catch (e) {
     console.error('Voice handler error:', e);
@@ -177,18 +170,37 @@ bot.on('text', async (ctx) => {
   
   // Skip commands (already handled above)
   if (text.startsWith('/')) return;
-  
+
   // Typing indicator
   await ctx.sendChatAction('typing');
-  
+
   try {
     // Get user session for context
     const session = getSession(userId);
+    const loc = session?.tripContext?.currentLocation;
+
+    // Direct answer: "where am I?"
+    const whereAmI = /\b(đang ở đâu|tôi ở đâu|mình ở đâu|bạn ở đâu|toi o dau|minh o dau|where am i)\b/i;
+    if (whereAmI.test(text)) {
+      if (loc) {
+        await ctx.reply(
+          `📍 Vị trí mình đang lưu cho bạn: <b>${loc.name}</b>\n` +
+          `Toạ độ: ${loc.lat.toFixed(5)}, ${loc.lon.toFixed(5)}\n\n` +
+          `Hỏi thêm "quán gần đây" hoặc "cafe chill" để mình tìm nha!`,
+          { parse_mode: 'HTML' }
+        );
+      } else {
+        await ctx.reply('Bạn chưa gửi vị trí cho Mi nha! Bấm 📎 → Location để gửi rồi Mi tìm chỗ gần liền.');
+      }
+      addToHistory(userId, 'user', text, { intent: 'nearby' });
+      return;
+    }
+
     const userContext = {
-      location: session?.tripContext?.currentLocation,
+      location: loc,
       language: session?.preferences?.language,
     };
-    
+
     // Process through AI orchestrator
     const result = await processMessage(userId, text, userContext);
     
