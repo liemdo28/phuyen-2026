@@ -215,12 +215,29 @@ class TelegramOrchestrator:
                 return
 
             # FAST PATH: Location Intelligence — natural language place search
-            # User sends location pin → extract coords
+            # User sends location pin → extract coords and persist immediately
             user_lat = None
             user_lon = None
             if message.location:
                 user_lat = message.location.latitude
                 user_lon = message.location.longitude
+                # Persist GPS so all future queries in this session benefit from it
+                await self.memory.update_preferences(context, {
+                    "last_lat": user_lat,
+                    "last_lon": user_lon,
+                })
+                await self.action_logger.log(
+                    "location_saved", chat.id, user.id,
+                    {"lat": user_lat, "lon": user_lon},
+                )
+                if decision.allow_reply:
+                    await self.telegram.send_message(
+                        chat.id,
+                        "📍 Đã lưu vị trí của bạn! Mình sẽ gợi ý địa điểm gần bạn nhất từ giờ nhé.",
+                        reply_markup=_remove_keyboard(),
+                    )
+                return
+
             # Detect location intent: "mở quán hải sản", "maps", "đường tới bãi xép", etc.
             location_intent = await self.location_intel.detect_intent(
                 incoming_text,
@@ -228,6 +245,18 @@ class TelegramOrchestrator:
                 user_lon=user_lon or context.preferences.get("last_lon"),
             )
             if location_intent.is_location_intent and incoming_text.strip():
+                has_coords = bool(
+                    context.preferences.get("last_lat") or user_lat
+                )
+                if not has_coords:
+                    # No GPS on file — ask permission via native Telegram button
+                    if decision.allow_reply:
+                        await self.telegram.send_message(
+                            chat.id,
+                            "📍 Cho mình biết bạn đang ở đâu để gợi ý chính xác hơn nhé!",
+                            reply_markup=_request_location_keyboard(),
+                        )
+                    return
                 try:
                     # Search indexed locations
                     results = await self.location_intel.search(
@@ -948,3 +977,23 @@ def _context_to_messages(context) -> list[dict[str, str]]:
         role = "user" if turn.role == "user" else "assistant"
         messages.append({"role": role, "content": turn.text})
     return messages
+
+
+def _request_location_keyboard() -> dict:
+    """
+    Telegram ReplyKeyboardMarkup with a native location-sharing button.
+    User taps once → Telegram sends their GPS as a location message.
+    """
+    return {
+        "keyboard": [[{
+            "text": "📍 Chia sẻ vị trí hiện tại",
+            "request_location": True,
+        }]],
+        "resize_keyboard": True,
+        "one_time_keyboard": True,
+    }
+
+
+def _remove_keyboard() -> dict:
+    """Remove the custom keyboard after location is received."""
+    return {"remove_keyboard": True}

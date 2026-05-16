@@ -70,4 +70,5 @@ def test_compose_live_reply_adds_calm_prefix_and_guidance() -> None:
         or "Mình ưu tiên nhịp nhẹ" in result
         or "Mình gom lại ngắn gọn" in result
     )
-    assert "Giữ nhịp nhẹ:" in result
+    # "Giữ nhịp nhẹ:" is internal orchestration guidance — must NOT appear in user-facing reply
+    assert "Giữ nhịp nhẹ:" not in result
