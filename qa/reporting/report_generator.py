@@ -52,7 +52,11 @@ class ReportGenerator:
 
     def __init__(self, output_dir: str = "qa/reports"):
         self.output_dir = output_dir
+        self.fix_queue_dir = "qa/fix_queue"
+        self.history_dir = "qa/history"
         os.makedirs(output_dir, exist_ok=True)
+        os.makedirs(self.fix_queue_dir, exist_ok=True)
+        os.makedirs(self.history_dir, exist_ok=True)
 
     def generate_run_report(self, aggregator: SessionAggregator, run_id: str = None) -> QARunReport:
         """Generate a full run report from an aggregator."""
@@ -288,6 +292,115 @@ class ReportGenerator:
             f.write("\n".join(lines))
 
         return path
+
+    def save_fix_queue(self, report: QARunReport) -> str:
+        """Save fix queue as LATEST.json + LATEST.md in qa/fix_queue/ for devs."""
+        queue_data = {
+            "generated": report.timestamp,
+            "run_id": report.run_id,
+            "pass_rate": report.pass_rate,
+            "grade": report.grade,
+            "total_violations": len(report.dev_fix_queue),
+            "items": [
+                {
+                    "priority": item.priority,
+                    "severity": item.severity,
+                    "rule": item.rule,
+                    "dimension": item.dimension,
+                    "fix": item.fix_suggestion,
+                    "example_message": item.user_message[:120],
+                    "reason": item.reason,
+                    "session_id": item.session_id,
+                    "status": item.status,
+                }
+                for item in report.dev_fix_queue
+            ],
+        }
+
+        # Save timestamped + LATEST (overwrite)
+        ts_path = os.path.join(self.fix_queue_dir, f"{report.run_id}_fixes.json")
+        latest_path = os.path.join(self.fix_queue_dir, "LATEST.json")
+        for p in [ts_path, latest_path]:
+            with open(p, "w", encoding="utf-8") as f:
+                json.dump(queue_data, f, ensure_ascii=False, indent=2)
+
+        # Markdown version for humans
+        md_lines = [
+            f"# 🛠️ Dev Fix Queue — {report.run_id}",
+            f"**Generated:** {report.timestamp}",
+            f"**Pass Rate:** {report.pass_rate:.1f}% | **Grade:** {report.grade}",
+            f"**Open Violations:** {len(report.dev_fix_queue)}",
+            "",
+            "---",
+            "",
+        ]
+        for i, item in enumerate(report.dev_fix_queue, 1):
+            emoji = {"CRITICAL": "🚨", "HIGH": "🔴", "MEDIUM": "🟡", "LOW": "⚪"}.get(item.severity, "⚪")
+            md_lines += [
+                f"## {i}. {emoji} `{item.rule}` [{item.severity}]",
+                f"**Dimension:** {item.dimension}  ",
+                f"**Fix:** {item.fix_suggestion}  ",
+                f"**Why:** {item.reason}  ",
+                f"**Example:** `{item.user_message[:100]}`  ",
+                f"**Session:** `{item.session_id}` | Status: `{item.status}`",
+                "",
+            ]
+
+        md_latest = os.path.join(self.fix_queue_dir, "LATEST.md")
+        md_ts = os.path.join(self.fix_queue_dir, f"{report.run_id}_fixes.md")
+        for p in [md_latest, md_ts]:
+            with open(p, "w", encoding="utf-8") as f:
+                f.write("\n".join(md_lines))
+
+        return latest_path
+
+    def save_history_entry(self, report: QARunReport):
+        """Append this run to qa/history/history.json — running log of all QA runs."""
+        history_path = os.path.join(self.history_dir, "history.json")
+
+        entry = {
+            "run_id": report.run_id,
+            "timestamp": report.timestamp,
+            "pass_rate": report.pass_rate,
+            "overall_score": report.overall_score,
+            "grade": report.grade,
+            "total_violations": len(report.dev_fix_queue),
+            "zero_audit": report.zero_audit_achieved,
+            "worst_dimensions": report.worst_dimensions,
+            "top_violations": [item.rule for item in report.dev_fix_queue[:5]],
+        }
+
+        history = []
+        if os.path.exists(history_path):
+            with open(history_path, "r", encoding="utf-8") as f:
+                try:
+                    history = json.load(f)
+                except Exception:
+                    history = []
+
+        history.append(entry)
+
+        with open(history_path, "w", encoding="utf-8") as f:
+            json.dump(history, f, ensure_ascii=False, indent=2)
+
+        # Also write a human-readable trend summary
+        trend_path = os.path.join(self.history_dir, "TREND.md")
+        trend_lines = [
+            "# 📈 QA History Trend",
+            "",
+            "| Run | Time | Pass% | Score | Grade | Violations |",
+            "|-----|------|-------|-------|-------|------------|",
+        ]
+        for h in history[-20:]:  # last 20 runs
+            ts = h["timestamp"][:16].replace("T", " ")
+            zero = " 🏆" if h.get("zero_audit") else ""
+            trend_lines.append(
+                f"| `{h['run_id'][-14:]}` | {ts} | {h['pass_rate']:.1f}% "
+                f"| {h['overall_score']:.1f} | {h['grade']}{zero} | {h['total_violations']} |"
+            )
+
+        with open(trend_path, "w", encoding="utf-8") as f:
+            f.write("\n".join(trend_lines))
 
     def print_live_report(self, score: QAScore, report: AuditReport):
         """Print a real-time QA result to console."""

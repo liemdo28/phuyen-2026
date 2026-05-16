@@ -278,6 +278,8 @@ def main():
 
     json_path = reporter.save_json_report(run_report)
     md_path = reporter.save_markdown_report(run_report)
+    reporter.save_fix_queue(run_report)
+    reporter.save_history_entry(run_report)
 
     print(f"\n{'='*60}")
     print(f"📊 QA BATCH COMPLETE")
@@ -290,6 +292,8 @@ def main():
     print(f"\n📄 Reports:")
     print(f"   JSON: {json_path}")
     print(f"   Markdown: {md_path}")
+    print(f"   Fix Queue: qa/fix_queue/LATEST.md")
+    print(f"   History: qa/history/TREND.md")
 
     if run_report.dev_fix_queue:
         print(f"\n🛠️  Top Fix Priorities:")
