@@ -96,38 +96,6 @@ def _is_pure_greeting(text: str) -> bool:
     return norm in {_strip_diacritics(g) for g in _GREETING_TOKENS}
 
 
-def _greeting_reply(user_id: int | None) -> str:
-    """Return a warm, pronoun-correct greeting for a known or unknown member."""
-    from app.mi.identity import MEMBER_REGISTRY
-    if user_id and user_id in MEMBER_REGISTRY:
-        m = MEMBER_REGISTRY[user_id]
-        # TripMember dataclass — use attribute access
-        address = f"{m.mi_calls_them} {m.display_name}"
-        return f"Chào {address}! Em đây rồi 😊 {m.mi_calls_them.capitalize()} cần gì không?"
-    # Unknown user — safe default for this group (everyone is older than Mi)
-    return "Chào anh/chị! Em là Mi — bạn đồng hành Phú Yên 2026 😊 Cần gì cứ hỏi em nhé."
-
-
-def _member_guidance(user_id: int | None) -> str:
-    """Build pronoun guidance string for the LLM based on known member."""
-    from app.mi.identity import MEMBER_REGISTRY
-    if not user_id or user_id not in MEMBER_REGISTRY:
-        # All members are older than Mi — safe defaults
-        return (
-            "## Member Pronoun Context\n"
-            "User is a known group member older than Mi (born 2004). "
-            "Address them as 'anh' or 'chị'. Mi refers to herself as 'em'. "
-            "NEVER use 'mình' or 'bạn' for self-reference in this conversation."
-        )
-    m = MEMBER_REGISTRY[user_id]
-    # TripMember dataclass — use attribute access
-    return (
-        f"## Member Pronoun Context\n"
-        f"User is {m.display_name}. "
-        f"Address them as '{m.mi_calls_them}' or '{m.mi_calls_them} {m.display_name}'. "
-        f"Mi refers to herself as '{m.mi_self}'. "
-        f"NEVER use 'mình' or 'bạn' as self-reference — ALWAYS use '{m.mi_self}'."
-    )
 
 
 _SHEET_TRIGGERS = (
@@ -533,7 +501,16 @@ class TelegramOrchestrator:
 
             # FAST PATH: pure greeting — respond warmly, skip LLM/analysis pipeline
             if _is_pure_greeting(incoming_text):
-                greeting = _greeting_reply(user.id if user else None)
+                try:
+                    from app.mi.identity import lookup_member, build_greeting_for_member
+                    _greet_member = lookup_member(telegram_id=user.id if user else None)
+                    greeting = (
+                        build_greeting_for_member(_greet_member)
+                        if _greet_member
+                        else "Chào anh/chị! Em là Mi — bạn đồng hành Phú Yên 2026 😊 Cần gì cứ hỏi em nhé."
+                    )
+                except Exception:
+                    greeting = "Chào anh/chị! Em là Mi — bạn đồng hành Phú Yên 2026 😊 Cần gì cứ hỏi em nhé."
                 await self.action_logger.log("greeting_response", chat.id, user.id if user else 0, {"text": incoming_text})
                 if decision.allow_reply:
                     await self.telegram.send_message(chat.id, greeting)
