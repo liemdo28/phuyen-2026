@@ -15,3 +15,9 @@ qa/history/*.json
 qa/fix_queue/*.json
 qa/fix_queue/*.md
 qa/regression/results/*.json
+
+# Nested repo clone (accidentally created inside project)
+phuyen-2026/
+
+# Claude Code worktrees (local dev tool state)
+.claude/worktrees/

@@ -1,0 +1,1176 @@
+# =============================================================================
+# Test Corpus — Phú Yên Trip Bot (23–27/5/2026)
+# =============================================================================
+# Purpose: verify intent classifier, test bot crash-resistance, check reply
+#          accuracy vs sheet data.
+#
+# Usage:
+#   pytest tests/test_corpus_e2e.py -v
+#   pytest tests/test_corpus_e2e.py -k "itinerary" --tb=short
+#
+# Each entry:
+#   id          : sequential number (1–149+)
+#   text        : raw user input
+#   intent      : expected classified intent
+#   behavior    : expected bot response summary
+#   notes       : edge-case notes (typos, voice-to-text, etc.)
+#   expected_contains    : substrings that MUST appear in response
+#   expected_no_match     : substrings that MUST NOT appear (e.g. error messages)
+#   status      : "pass_expected" | "known_fail" | "crash_expected"
+# =============================================================================
+
+# =============================================================================
+# DOMAIN 1: ITINERARY (lịch trình ngày-giờ)
+# =============================================================================
+
+itinerary_happy_path:
+  - id: 1
+    text: "Lịch trình ngày mai có gì"
+    intent: itinerary
+    behavior: "Filter date = D+1, render HH:MM + activity"
+    expected_contains: ["lịch", "ngày"]
+    expected_no_match: ["lỗi", "exception", "Mình bị lỗi"]
+
+  - id: 2
+    text: "lịch hôm nay"
+    intent: itinerary
+    behavior: "Filter date = today"
+    expected_contains: ["lịch", "hôm nay"]
+    expected_no_match: ["lỗi"]
+
+  - id: 3
+    text: "mai đi đâu"
+    intent: itinerary
+    behavior: "Filter date = D+1"
+    expected_contains: ["lịch", "mai"]
+    expected_no_match: ["lỗi"]
+
+  - id: 4
+    text: "ngày 24 có gì"
+    intent: itinerary
+    behavior: "Filter date = 24/5"
+    expected_contains: ["24", "tháng 5"]
+    expected_no_match: ["lỗi"]
+
+  - id: 5
+    text: "ngày 25 lịch ra sao"
+    intent: itinerary
+    behavior: "Filter date = 25/5"
+    expected_contains: ["25", "tháng 5"]
+    expected_no_match: ["lỗi"]
+
+  - id: 6
+    text: "sáng mai làm gì"
+    intent: itinerary
+    behavior: "Filter date=D+1 + time<12:00"
+    expected_contains: ["sáng", "mai"]
+    expected_no_match: ["lỗi"]
+
+  - id: 7
+    text: "chiều nay đi đâu"
+    intent: itinerary
+    behavior: "Filter date=today + 12:00<time<18:00"
+    expected_contains: ["chiều", "hôm nay"]
+    expected_no_match: ["lỗi"]
+
+  - id: 8
+    text: "tối nay có plan gì ko"
+    intent: itinerary
+    behavior: "Filter date=today + time>=18:00"
+    expected_contains: ["tối", "hôm nay"]
+    expected_no_match: ["lỗi"]
+
+  - id: 9
+    text: "schedule cho cả chuyến"
+    intent: itinerary
+    behavior: "Render full schedule, group by date"
+    expected_contains: ["lịch trình", "23", "24", "25", "26", "27"]
+    expected_no_match: ["lỗi"]
+
+  - id: 10
+    text: "toàn bộ lịch trình"
+    intent: itinerary
+    behavior: "Same as #9"
+    expected_contains: ["lịch trình"]
+    expected_no_match: ["lỗi"]
+
+  - id: 11
+    text: "itinerary"
+    intent: itinerary
+    behavior: "Same as #9 (English variant)"
+    expected_contains: ["lịch trình"]
+    expected_no_match: ["lỗi"]
+
+  - id: 12
+    text: "kế hoạch ngày 26 là gì"
+    intent: itinerary
+    behavior: "Filter date = 26/5"
+    expected_contains: ["26", "tháng 5"]
+    expected_no_match: ["lỗi"]
+
+  - id: 13
+    text: "mấy giờ check in resort"
+    intent: itinerary
+    behavior: "Filter activity contains 'check-in' or 'check in'"
+    expected_contains: ["check-in", "check in", "giờ"]
+    expected_no_match: ["lỗi"]
+
+  - id: 14
+    text: "bao giờ về"
+    intent: itinerary
+    behavior: "Filter activity contains 'về' or 'checkout' cuối"
+    expected_contains: ["về", "checkout", "27"]
+    expected_no_match: ["lỗi"]
+
+  - id: 15
+    text: "còn mấy ngày nữa"
+    intent: itinerary
+    behavior: "Count days from today to last activity"
+    expected_contains: ["ngày"]
+    expected_no_match: ["lỗi"]
+
+itinerary_edge_phrasings:
+  - id: 16
+    text: "lich tring ngay mai"
+    intent: itinerary
+    behavior: "Sai chính tả — matcher phải strip diacritic + tolerate typo"
+    expected_contains: ["lịch", "mai"]
+    expected_no_match: ["lỗi"]
+    status: known_fail
+    notes: " INTENT_KEYWORDS has 'lich trinh' — but input is 'lich tring'. Consider fuzzy match."
+
+  - id: 17
+    text: "LỊCH NGÀY MAI ĐÂU"
+    intent: itinerary
+    behavior: "All caps — normalize before matching"
+    expected_contains: ["lịch", "mai"]
+    expected_no_match: ["lỗi"]
+    status: known_fail
+    notes: "normalize_loose_text converts to lowercase, should work"
+
+  - id: 18
+    text: "lịch trình..???"
+    intent: itinerary
+    behavior: "Punctuation noise"
+    expected_contains: ["lịch trình"]
+    expected_no_match: ["lỗi"]
+
+  - id: 19
+    text: "mai đi gì v"
+    intent: itinerary
+    behavior: "Tiếng lóng 'v' cuối câu"
+    expected_contains: ["lịch", "mai"]
+    expected_no_match: ["lỗi"]
+    notes: "No 'v' filter in INTENT_KEYWORDS — may fail"
+
+  - id: 20
+    text: "ngmai có gì"
+    intent: itinerary
+    behavior: "Viết tắt 'ngmai' = ngày mai"
+    expected_contains: ["mai"]
+    expected_no_match: ["lỗi"]
+    status: known_fail
+    notes: "'ngmai' not in keywords — likely no match"
+
+  - id: 21
+    text: "ngay mai co gi"
+    intent: itinerary
+    behavior: "Không dấu hoàn toàn"
+    expected_contains: ["lịch", "mai"]
+    expected_no_match: ["lỗi"]
+
+  - id: 22
+    text: "lịch trình ngày... à 24"
+    intent: itinerary
+    behavior: "Hesitation, voice-to-text style"
+    expected_contains: ["24", "tháng 5"]
+    expected_no_match: ["lỗi"]
+
+  - id: 23
+    text: "nhắc lại lịch hôm nay với"
+    intent: itinerary
+    behavior: "'với' cuối câu — vẫn match"
+    expected_contains: ["lịch", "hôm nay"]
+    expected_no_match: ["lỗi"]
+
+# =============================================================================
+# DOMAIN 2: FOOD (quán ăn)
+# =============================================================================
+
+food_happy_path:
+  - id: 24
+    text: "ăn gì gần Sun Village"
+    intent: food
+    behavior: "Đọc tab Quán ăn, filter location chứa Sun/Phú Yên/Hòa Hiệp"
+    expected_contains: ["quán", "ăn"]
+    expected_no_match: ["lỗi", "Mình bị lỗi nội bộ"]
+
+  - id: 25
+    text: "quán ăn gần resort"
+    intent: food
+    behavior: "Same as #24"
+    expected_contains: ["quán", "ăn", "resort"]
+    expected_no_match: ["lỗi"]
+
+  - id: 26
+    text: "có quán hải sản nào ngon ko"
+    intent: food
+    behavior: "Filter category=hải sản"
+    expected_contains: ["hải sản", "quán"]
+    expected_no_match: ["lỗi"]
+
+  - id: 27
+    text: "đặc sản Phú Yên là gì"
+    intent: food
+    behavior: "Liệt kê quán có note chứa 'đặc sản'"
+    expected_contains: ["đặc sản"]
+    expected_no_match: ["lỗi"]
+
+  - id: 28
+    text: "quán bánh canh hẹ"
+    intent: food
+    behavior: "Filter name/note contains 'bánh canh'"
+    expected_contains: ["bánh canh"]
+    expected_no_match: ["lỗi"]
+
+  - id: 29
+    text: "nhà hàng gần đây"
+    intent: food
+    behavior: "Same as #25"
+    expected_contains: ["quán", "nhà hàng"]
+    expected_no_match: ["lỗi"]
+
+  - id: 30
+    text: "trưa nay ăn ở đâu"
+    intent: food
+    behavior: "Assume đây = current location"
+    expected_contains: ["trưa", "ăn"]
+    expected_no_match: ["lỗi"]
+
+  - id: 31
+    text: "quán nào rẻ rẻ"
+    intent: food
+    behavior: "Filter by price_range nếu có cột"
+    expected_contains: ["quán"]
+    expected_no_match: ["lỗi"]
+
+  - id: 32
+    text: "quán nào sang"
+    intent: food
+    behavior: "Inverse of #31"
+    expected_contains: ["quán"]
+    expected_no_match: ["lỗi"]
+
+  - id: 33
+    text: "đồ ăn vặt"
+    intent: food
+    behavior: "Filter category=vặt/snack"
+    expected_contains: ["vặt", "ăn"]
+    expected_no_match: ["lỗi"]
+
+  - id: 34
+    text: "mì quảng có ko"
+    intent: food
+    behavior: "Filter name contains 'mì quảng'"
+    expected_contains: ["mì quảng"]
+    expected_no_match: ["lỗi"]
+
+  - id: 35
+    text: "cơm gà Tuy Hòa"
+    intent: food
+    behavior: "Filter contains 'cơm gà'"
+    expected_contains: ["cơm gà"]
+    expected_no_match: ["lỗi"]
+
+  - id: 36
+    text: "quán hải sản Vũng Rô"
+    intent: food
+    behavior: "Filter location=Vũng Rô + category=hải sản"
+    expected_contains: ["hải sản", "Vũng Rô"]
+    expected_no_match: ["lỗi"]
+
+  - id: 37
+    text: "quán bè nổi"
+    intent: food
+    behavior: "Filter contains 'bè nổi'"
+    expected_contains: ["bè nổi"]
+    expected_no_match: ["lỗi"]
+
+  - id: 38
+    text: "có chỗ nào ăn đêm ko"
+    intent: food
+    behavior: "Filter open_time covers late night"
+    expected_contains: ["đêm", "quán"]
+    expected_no_match: ["lỗi"]
+
+  - id: 39
+    text: "quán nào view biển"
+    intent: food
+    behavior: "Filter note contains 'view biển'"
+    expected_contains: ["view", "biển"]
+    expected_no_match: ["lỗi"]
+
+  - id: 40
+    text: "bún bò gần đây"
+    intent: food
+    behavior: "Filter contains 'bún bò'"
+    expected_contains: ["bún bò"]
+    expected_no_match: ["lỗi"]
+
+food_edge_phrasings:
+  - id: 41
+    text: "đói quá ăn gì"
+    intent: food
+    behavior: "Cảm xúc + intent — vẫn route food"
+    expected_contains: ["quán", "ăn"]
+    expected_no_match: ["lỗi"]
+
+  - id: 42
+    text: "đói"
+    intent: food
+    behavior: "Quá ngắn — có thể clarify 'ăn gì cụ thể?'"
+    expected_no_match: ["lỗi", "exception"]
+    notes: "Ambiguous — classify returns None, falls through to LLM"
+
+  - id: 43
+    text: "ăn"
+    intent: food
+    behavior: "Quá ngắn — clarify 'ăn gì cụ thể?'"
+    expected_no_match: ["lỗi", "exception"]
+    notes: "Too short — classify may return None"
+
+  - id: 44
+    text: "quan an gan day"
+    intent: food
+    behavior: "Không dấu"
+    expected_contains: ["quán", "ăn"]
+    expected_no_match: ["lỗi"]
+
+  - id: 45
+    text: "có gì ăn ko mngười"
+    intent: food
+    behavior: "'mng' = mọi người, slang"
+    expected_contains: ["quán", "ăn"]
+    expected_no_match: ["lỗi"]
+
+  - id: 46
+    text: "uống cafe ở đâu"
+    intent: food
+    behavior: "Quán cafe — có thể tách subdomain beverage"
+    expected_contains: ["cafe"]
+    expected_no_match: ["lỗi"]
+
+  - id: 47
+    text: "quán nhậu"
+    intent: food
+    behavior: "Match category=bar/nhậu"
+    expected_contains: ["quán", "nhậu"]
+    expected_no_match: ["lỗi"]
+
+  - id: 48
+    text: "chè gì ngon ở đây"
+    intent: food
+    behavior: "'chè' = dessert, filter category=tráng miệng"
+    expected_contains: ["chè", "tráng miệng"]
+    expected_no_match: ["lỗi"]
+
+  - id: 49
+    text: "có chỗ nào bán bia ko"
+    intent: food
+    behavior: "CRASH từ screenshot user thật — cần fix"
+    expected_contains: ["bia", "quán"]
+    expected_no_match: ["lỗi", "exception", "Traceback"]
+    status: crash_expected
+    notes: "Known crash — needs handler for shopping subdomain"
+
+# =============================================================================
+# DOMAIN 3: LOCATION / DIRECTIONS (đường đi, vị trí)
+# =============================================================================
+
+location_happy_path:
+  - id: 50
+    text: "đường đến resort"
+    intent: maps_direction
+    behavior: "Trả Google Maps link tới Sun Village"
+    expected_contains: ["maps", "Sun Village", "đường"]
+    expected_no_match: ["lỗi"]
+
+  - id: 51
+    text: "chỉ đường tới Sun Village"
+    intent: maps_direction
+    behavior: "Same as #50"
+    expected_contains: ["maps", "Sun Village"]
+    expected_no_match: ["lỗi"]
+
+  - id: 52
+    text: "maps đi resort"
+    intent: maps_direction
+    behavior: "Same as #50 — đã work"
+    expected_contains: ["maps", "resort"]
+    expected_no_match: ["lỗi"]
+
+  - id: 53
+    text: "resort ở đâu"
+    intent: maps_direction
+    behavior: "Trả địa chỉ + maps link"
+    expected_contains: ["Sun Village", "địa chỉ"]
+    expected_no_match: ["lỗi"]
+
+  - id: 54
+    text: "Nắng Hạ Homestay ở đâu"
+    intent: maps_direction
+    behavior: "Address + maps link cho Nắng Hạ"
+    expected_contains: ["Nắng Hạ", "Homestay"]
+    expected_no_match: ["lỗi"]
+
+  - id: 55
+    text: "sun village cách Tuy Hòa bao xa"
+    intent: distance_query
+    behavior: "Tính khoảng cách (cần Maps Distance API)"
+    expected_contains: ["km", "cách"]
+    expected_no_match: ["lỗi"]
+
+  - id: 56
+    text: "từ resort đến Bãi Môn bao lâu"
+    intent: distance_query
+    behavior: "Same as #55 + time estimate"
+    expected_contains: ["Bãi Môn", "phút", "km"]
+    expected_no_match: ["lỗi"]
+
+  - id: 57
+    text: "đi từ sân bay tới resort thế nào"
+    intent: maps_direction
+    behavior: "Maps link from CXR/TBB to Sun"
+    expected_contains: ["sân bay", "resort", "maps"]
+    expected_no_match: ["lỗi"]
+
+  - id: 58
+    text: "mũi điện ở đâu"
+    intent: maps_direction
+    behavior: "Trả maps link"
+    expected_contains: ["mũi Điện", "maps"]
+    expected_no_match: ["lỗi"]
+
+  - id: 59
+    text: "gành đá đĩa cách đây bao xa"
+    intent: distance_query
+    behavior: "From current/Sun"
+    expected_contains: ["gành đá đĩa", "km"]
+    expected_no_match: ["lỗi"]
+
+location_edge_geolocation:
+  - id: 60
+    text: "tôi đang ở đâu"
+    intent: user_location_query
+    behavior: "CRASH — bot phải reply 'share location qua 📎 nhé' thay vì throw"
+    expected_contains: ["share location", "📎", "vị trí"]
+    expected_no_match: ["lỗi", "exception", "Traceback"]
+    status: crash_expected
+    notes: "Known crash — needs graceful fallback"
+
+  - id: 61
+    text: "gần đây có gì"
+    intent: nearby_query
+    behavior: "Cần user share location trước"
+    expected_contains: ["share location", "vị trí"]
+    expected_no_match: ["lỗi", "exception"]
+    notes: "Should ask for location instead of crashing"
+
+  - id: 62
+    text: "tôi cần đi vệ sinh ở đâu gần đây"
+    intent: nearby_query
+    behavior: "Same — phải graceful nếu chưa có loc"
+    expected_contains: ["vệ sinh", "vị trí"]
+    expected_no_match: ["lỗi", "exception"]
+
+  - id: 63
+    text: "trạm xăng gần nhất"
+    intent: nearby_query
+    behavior: "POI search — cần loc"
+    expected_contains: ["trạm xăng", "vị trí"]
+    expected_no_match: ["lỗi", "exception"]
+
+  - id: 64
+    text: "trạm dừng chân"
+    intent: nearby_query
+    behavior: "CRASH từ screenshot user thật"
+    expected_contains: ["trạm dừng chân"]
+    expected_no_match: ["lỗi", "exception", "Traceback"]
+    status: crash_expected
+    notes: "Known crash — needs handler"
+
+  - id: 65
+    text: "atm gần đây"
+    intent: nearby_query
+    behavior: "POI search"
+    expected_contains: ["ATM", "vị trí"]
+    expected_no_match: ["lỗi", "exception"]
+
+  - id: 66
+    text: "bệnh viện gần nhất"
+    intent: nearby_query
+    behavior: "POI search urgent"
+    expected_contains: ["bệnh viện", "vị trí"]
+    expected_no_match: ["lỗi", "exception"]
+
+  - id: 67
+    text: "nhà thuốc gần đây"
+    intent: nearby_query
+    behavior: "POI search"
+    expected_contains: ["nhà thuốc", "vị trí"]
+    expected_no_match: ["lỗi", "exception"]
+
+# =============================================================================
+# DOMAIN 4: BUDGET / EXPENSE (ngân sách, chi tiêu)
+# =============================================================================
+
+budget_happy_path:
+  - id: 68
+    text: "ngân sách chuyến đi"
+    intent: budget
+    behavior: "Đọc tab Tổng Chi phí, render tổng + chi tiết"
+    expected_contains: ["Ngân sách", "Tổng"]
+    expected_no_match: ["lỗi"]
+
+  - id: 69
+    text: "còn bao nhiêu tiền"
+    intent: budget
+    behavior: "Trả 'Còn' row"
+    expected_contains: ["Còn", "đồ"]
+    expected_no_match: ["lỗi"]
+
+  - id: 70
+    text: "tổng chi phí dự kiến"
+    intent: budget
+    behavior: "Tổng 'Tạm tính'"
+    expected_contains: ["Tạm tính", "Tổng"]
+    expected_no_match: ["lỗi"]
+
+  - id: 71
+    text: "thực tế đã chi bao nhiêu"
+    intent: budget
+    behavior: "Tổng 'Thực tính'"
+    expected_contains: ["Thực tính", "đã chi"]
+    expected_no_match: ["lỗi"]
+
+  - id: 72
+    text: "chi phí resort"
+    intent: budget
+    behavior: "Filter Mục=Khách sạn"
+    expected_contains: ["Khách sạn", "resort"]
+    expected_no_match: ["lỗi"]
+
+  - id: 73
+    text: "tiền xe bao nhiêu"
+    intent: budget
+    behavior: "Filter Mục=Xe"
+    expected_contains: ["Xe", "tiền"]
+    expected_no_match: ["lỗi"]
+
+  - id: 74
+    text: "xăng dầu hết bao nhiêu"
+    intent: budget
+    behavior: "Filter Mục=Xăng dầu"
+    expected_contains: ["Xăng dầu"]
+    expected_no_match: ["lỗi"]
+
+  - id: 75
+    text: "ai ứng tiền rồi"
+    intent: contribution
+    behavior: "Show cột 'Ứng trước'"
+    expected_contains: ["Ứng trước", "góp"]
+    expected_no_match: ["lỗi"]
+
+  - id: 76
+    text: "Liêm đã chi gì"
+    intent: budget
+    behavior: "Filter 'Ứng trước'=Liêm"
+    expected_contains: ["Liêm", "chi"]
+    expected_no_match: ["lỗi"]
+
+  - id: 77
+    text: "Linh đã ứng tiền chưa"
+    intent: contribution
+    behavior: "Same"
+    expected_contains: ["Linh", "Ứng"]
+    expected_no_match: ["lỗi"]
+
+  - id: 78
+    text: "tổng chi phí từng người"
+    intent: contribution
+    behavior: "Đọc tab Góp Tiền Trước"
+    expected_contains: ["góp", "mỗi người"]
+    expected_no_match: ["lỗi"]
+
+  - id: 79
+    text: "mỗi người đóng bao nhiêu"
+    intent: contribution
+    behavior: "Same as #78"
+    expected_contains: ["mỗi người", "đóng"]
+    expected_no_match: ["lỗi"]
+
+  - id: 80
+    text: "còn thiếu bao nhiêu"
+    intent: budget
+    behavior: "Tổng dự kiến - đã ứng"
+    expected_contains: ["thiếu", "Còn"]
+    expected_no_match: ["lỗi"]
+
+budget_edge_phrasings:
+  - id: 81
+    text: "hết bao nhiêu rồi"
+    intent: budget
+    behavior: "Mơ hồ — có thể 'đã chi' hoặc 'còn'"
+    expected_no_match: ["lỗi", "exception"]
+
+  - id: 82
+    text: "chi tiêu"
+    intent: expense_query
+    behavior: "1 từ — render full sheet"
+    expected_contains: ["chi tiêu", "Tổng"]
+    expected_no_match: ["lỗi"]
+
+  - id: 83
+    text: "money"
+    intent: budget
+    behavior: "English keyword"
+    expected_contains: ["tiền", "ngân sách"]
+    expected_no_match: ["lỗi"]
+    notes: "English word — may not match 'budget' keyword list"
+
+  - id: 84
+    text: "budget"
+    intent: budget
+    behavior: "English keyword"
+    expected_contains: ["Ngân sách"]
+    expected_no_match: ["lỗi"]
+
+  - id: 85
+    text: "ngsach"
+    intent: budget
+    behavior: "Viết tắt — strip diacritic + match prefix"
+    expected_contains: ["ngân sách"]
+    expected_no_match: ["lỗi"]
+    status: known_fail
+    notes: "'ngsach' after normalize_loose_text = 'ngsach' — not in keyword list"
+
+# =============================================================================
+# DOMAIN 5: PACKING (đồ phải đem)
+# =============================================================================
+
+packing_happy_path:
+  - id: 86
+    text: "phải đem gì"
+    intent: packing
+    behavior: "Đọc tab Phải đem, render list"
+    expected_contains: ["đem", "mang", "checklist"]
+    expected_no_match: ["lỗi"]
+
+  - id: 87
+    text: "checklist đồ"
+    intent: packing
+    behavior: "Same"
+    expected_contains: ["checklist", "đồ"]
+    expected_no_match: ["lỗi"]
+
+  - id: 88
+    text: "có thiếu gì ko"
+    intent: packing
+    behavior: "Filter status=chưa tick"
+    expected_contains: ["thiếu", "chưa"]
+    expected_no_match: ["lỗi"]
+
+  - id: 89
+    text: "tôi đã chuẩn bị xong chưa"
+    intent: packing
+    behavior: "Same as #88"
+    expected_contains: ["chuẩn bị", "xong"]
+    expected_no_match: ["lỗi"]
+
+  - id: 90
+    text: "mang gì cho biển"
+    intent: packing
+    behavior: "Filter category=biển nếu có"
+    expected_contains: ["biển", "mang"]
+    expected_no_match: ["lỗi"]
+
+  - id: 91
+    text: "có cần mang dù không"
+    intent: packing
+    behavior: "Filter item contains 'dù'"
+    expected_contains: ["dù"]
+    expected_no_match: ["lỗi"]
+
+  - id: 92
+    text: "quên gì ko nhỉ"
+    intent: packing
+    behavior: "Same as #88"
+    expected_contains: ["quên", "thiếu"]
+    expected_no_match: ["lỗi"]
+
+packing_edge_write_operation:
+  - id: 93
+    text: "đã chuẩn bị xong khăn tắm"
+    intent: packing_update
+    behavior: "Tick checkbox 'khăn tắm' → cần write permission"
+    expected_contains: ["khăn tắm", "xong", "✓"]
+    expected_no_match: ["lỗi", "exception", "permission"]
+    notes: "Write operation — needs sheets write handler"
+
+  - id: 94
+    text: "tick xong kem chống nắng"
+    intent: packing_update
+    behavior: "Same"
+    expected_contains: ["kem chống nắng", "xong"]
+    expected_no_match: ["lỗi", "exception"]
+
+# =============================================================================
+# DOMAIN 6: WEATHER
+# =============================================================================
+
+weather_happy_path:
+  - id: 95
+    text: "thời tiết ngày mai"
+    intent: weather
+    behavior: "Đọc tab Thời Tiết hoặc gọi weather API filter D+1"
+    expected_contains: ["thời tiết", "mai"]
+    expected_no_match: ["lỗi"]
+
+  - id: 96
+    text: "trời có mưa ko"
+    intent: weather
+    behavior: "Today forecast"
+    expected_contains: ["mưa", "thời tiết"]
+    expected_no_match: ["lỗi"]
+
+  - id: 97
+    text: "ngày 25 nắng ko"
+    intent: weather
+    behavior: "Filter date=25"
+    expected_contains: ["25", "tháng 5", "nắng"]
+    expected_no_match: ["lỗi"]
+
+  - id: 98
+    text: "weather mai"
+    intent: weather
+    behavior: "English mix"
+    expected_contains: ["thời tiết", "mai"]
+    expected_no_match: ["lỗi"]
+
+  - id: 99
+    text: "có nên mang áo mưa ko"
+    intent: weather
+    behavior: "Forecast → khuyến nghị"
+    expected_contains: ["áo mưa", "mang"]
+    expected_no_match: ["lỗi"]
+
+  - id: 100
+    text: "trời hôm nay thế nào"
+    intent: weather
+    behavior: "Today"
+    expected_contains: ["thời tiết", "hôm nay"]
+    expected_no_match: ["lỗi"]
+
+# =============================================================================
+# DOMAIN 7: SUGGESTIONS (gợi ý điểm đến, hoạt động)
+# =============================================================================
+
+suggestion_happy_path:
+  - id: 101
+    text: "có gì chơi ở Phú Yên"
+    intent: suggestion
+    behavior: "Đọc tab Gợi Ý Lịch Trình"
+    expected_contains: ["Phú Yên", "chơi", "điểm"]
+    expected_no_match: ["lỗi"]
+
+  - id: 102
+    text: "điểm đến nổi tiếng"
+    intent: suggestion
+    behavior: "Same"
+    expected_contains: ["điểm đến", "nổi tiếng"]
+    expected_no_match: ["lỗi"]
+
+  - id: 103
+    text: "bãi biển nào đẹp"
+    intent: suggestion
+    behavior: "Filter category=biển"
+    expected_contains: ["bãi biển"]
+    expected_no_match: ["lỗi"]
+
+  - id: 104
+    text: "nên đi đâu hôm nay"
+    intent: suggestion
+    behavior: "Filter unvisited"
+    expected_contains: ["đi", "hôm nay"]
+    expected_no_match: ["lỗi"]
+
+  - id: 105
+    text: "có gì chơi tối nay"
+    intent: suggestion
+    behavior: "Filter time=evening"
+    expected_contains: ["tối nay", "chơi"]
+    expected_no_match: ["lỗi"]
+
+  - id: 106
+    text: "hoạt động ban đêm"
+    intent: suggestion
+    behavior: "Same as #105"
+    expected_contains: ["ban đêm", "hoạt động"]
+    expected_no_match: ["lỗi"]
+
+  - id: 107
+    text: "view sunset ở đâu"
+    intent: suggestion
+    behavior: "Filter note contains 'sunset'"
+    expected_contains: ["sunset", "view"]
+    expected_no_match: ["lỗi"]
+
+  - id: 108
+    text: "photo spot"
+    intent: suggestion
+    behavior: "English"
+    expected_contains: ["photo", "spot", "check-in"]
+    expected_no_match: ["lỗi"]
+
+  - id: 109
+    text: "check-in chỗ nào đẹp"
+    intent: suggestion
+    behavior: "Same"
+    expected_contains: ["check-in", "đẹp"]
+    expected_no_match: ["lỗi"]
+
+  - id: 110
+    text: "mua quà về ở đâu"
+    intent: shopping_suggestion
+    behavior: "Có thể là subdomain"
+    expected_contains: ["mua quà", "về"]
+    expected_no_match: ["lỗi"]
+
+# =============================================================================
+# DOMAIN 8: SHOPPING / SUPPLIES (mua đồ) — GAP: chưa có handler
+# =============================================================================
+
+shopping_gap:
+  - id: 111
+    text: "T muốn mua bia"
+    intent: shopping
+    behavior: "CRASH — cần handler mới"
+    expected_contains: ["bia"]
+    expected_no_match: ["lỗi", "exception", "Traceback"]
+    status: crash_expected
+    notes: "Known crash — shopping domain not implemented"
+
+  - id: 112
+    text: "T muốn mua chè"
+    intent: shopping
+    behavior: "CRASH"
+    expected_contains: ["chè"]
+    expected_no_match: ["lỗi", "exception", "Traceback"]
+    status: crash_expected
+
+  - id: 113
+    text: "mua nước ở đâu"
+    intent: shopping
+    behavior: "POI search hoặc tab Quán ăn filter convenience"
+    expected_contains: ["nước", "mua"]
+    expected_no_match: ["lỗi"]
+
+  - id: 114
+    text: "siêu thị gần đây"
+    intent: shopping
+    behavior: "POI search"
+    expected_contains: ["siêu thị", "gần"]
+    expected_no_match: ["lỗi"]
+
+  - id: 115
+    text: "mua hải sản tươi về"
+    intent: shopping
+    behavior: "Filter Quán ăn category=chợ/tươi sống"
+    expected_contains: ["hải sản tươi", "chợ"]
+    expected_no_match: ["lỗi"]
+
+  - id: 116
+    text: "mua đặc sản gì"
+    intent: shopping
+    behavior: "Tab gợi ý hoặc LLM small talk"
+    expected_contains: ["đặc sản"]
+    expected_no_match: ["lỗi"]
+
+# =============================================================================
+# DOMAIN 9: HOTEL / ACCOMMODATION
+# =============================================================================
+
+hotel_happy_path:
+  - id: 117
+    text: "resort tên gì"
+    intent: hotel_info
+    behavior: "Đọc tab Tổng Chi phí row Khách sạn"
+    expected_contains: ["Sun Village", "resort"]
+    expected_no_match: ["lỗi"]
+
+  - id: 118
+    text: "địa chỉ Sun Village"
+    intent: hotel_info
+    behavior: "Address + maps"
+    expected_contains: ["Sun Village", "địa chỉ", "maps"]
+    expected_no_match: ["lỗi"]
+
+  - id: 119
+    text: "check in mấy giờ"
+    intent: hotel_info
+    behavior: "Filter activity check-in"
+    expected_contains: ["check-in", "giờ"]
+    expected_no_match: ["lỗi"]
+
+  - id: 120
+    text: "check out giờ nào"
+    intent: hotel_info
+    behavior: "Filter activity check-out"
+    expected_contains: ["check-out", "giờ"]
+    expected_no_match: ["lỗi"]
+
+  - id: 121
+    text: "có ăn sáng ko"
+    intent: hotel_info
+    behavior: "Ghi chú col chứa 'ăn sáng'"
+    expected_contains: ["ăn sáng", "resort"]
+    expected_no_match: ["lỗi"]
+
+  - id: 122
+    text: "resort bao nhiêu phòng"
+    intent: hotel_info
+    behavior: "Ghi chú col"
+    expected_contains: ["phòng", "resort"]
+    expected_no_match: ["lỗi"]
+
+  - id: 123
+    text: "wifi password resort"
+    intent: hotel_info
+    behavior: "Có thể không có data — graceful fallback"
+    expected_no_match: ["lỗi", "exception"]
+    notes: "May return 'không có thông tin' gracefully"
+
+  - id: 124
+    text: "số điện thoại resort"
+    intent: hotel_info
+    behavior: "Lookup phone number"
+    expected_contains: ["điện thoại", "resort"]
+    expected_no_match: ["lỗi"]
+
+# =============================================================================
+# EDGE CASE CATEGORY A: Voice-to-text errors
+# =============================================================================
+
+voice_to_text_errors:
+  - id: 125
+    text: "lịch trình của ngày 24 á"
+    intent: itinerary
+    behavior: "Match itinerary, ignore 'á' filler"
+    expected_contains: ["lịch trình", "24"]
+    expected_no_match: ["lỗi"]
+
+  - id: 126
+    text: "thế bây giờ là làm gì nhỉ"
+    intent: itinerary
+    behavior: "Match itinerary today"
+    expected_contains: ["lịch", "hôm nay"]
+    expected_no_match: ["lỗi"]
+
+  - id: 127
+    text: "à mà quên hỏi thời tiết"
+    intent: weather
+    behavior: "Match weather, ignore preamble"
+    expected_contains: ["thời tiết"]
+    expected_no_match: ["lỗi"]
+
+  - id: 128
+    text: "ờ thì là mai đi đâu nhỉ"
+    intent: itinerary
+    behavior: "Match itinerary D+1"
+    expected_contains: ["lịch", "mai"]
+    expected_no_match: ["lỗi"]
+
+# =============================================================================
+# EDGE CASE CATEGORY B: Multi-intent (1 câu nhiều intent)
+# =============================================================================
+
+multi_intent:
+  - id: 129
+    text: "mai đi đâu và ăn gì"
+    intent: itinerary  # primary
+    behavior: "Match itinerary first, append food suggestion"
+    expected_contains: ["lịch", "mai", "ăn"]
+    expected_no_match: ["lỗi"]
+    notes: "Multi-intent — secondary intent may be LLM-assisted"
+
+  - id: 130
+    text: "thời tiết mai và nên mang gì"
+    intent: weather  # primary
+    behavior: "Weather + packing combo"
+    expected_contains: ["thời tiết", "mai", "mang"]
+    expected_no_match: ["lỗi"]
+
+  - id: 131
+    text: "ngân sách còn bao nhiêu và ai ứng"
+    intent: budget  # primary
+    behavior: "Budget + contribution combo"
+    expected_contains: ["Ngân sách", "Còn", "ai ứng"]
+    expected_no_match: ["lỗi"]
+
+# =============================================================================
+# EDGE CASE CATEGORY C: Small talk (không phải factual query → LLM)
+# =============================================================================
+
+small_talk:
+  - id: 132
+    text: "chào bot"
+    intent: small_talk
+    behavior: "LLM companion reply"
+    expected_no_match: ["lỗi", "exception"]
+    expected_contains: ["chào"]
+
+  - id: 133
+    text: "bot tên gì"
+    intent: small_talk
+    behavior: "LLM hoặc command_handler"
+    expected_no_match: ["lỗi", "exception"]
+
+  - id: 134
+    text: "kể chuyện vui đi"
+    intent: small_talk
+    behavior: "LLM"
+    expected_no_match: ["lỗi", "exception"]
+
+  - id: 135
+    text: "mệt quá"
+    intent: small_talk
+    behavior: "LLM empathy reply"
+    expected_no_match: ["lỗi", "exception"]
+
+  - id: 136
+    text: "hôm nay đẹp trời ghê"
+    intent: small_talk
+    behavior: "LLM small talk"
+    expected_no_match: ["lỗi", "exception"]
+
+  - id: 137
+    text: "bot có thể làm gì"
+    intent: help
+    behavior: "help/command list"
+    expected_no_match: ["lỗi", "exception"]
+    expected_contains: ["lịch trình", "thời tiết", "quán ăn", "ngân sách"]
+
+  - id: 138
+    text: "help"
+    intent: help
+    behavior: "/help command"
+    expected_no_match: ["lỗi", "exception"]
+    expected_contains: ["/help"]
+
+  - id: 139
+    text: "/start"
+    intent: command
+    behavior: "start command"
+    expected_no_match: ["lỗi", "exception"]
+    expected_contains: ["chào", "Phú Yên"]
+
+# =============================================================================
+# EDGE CASE CATEGORY D: Ambiguous / out-of-scope
+# =============================================================================
+
+ambiguous_out_of_scope:
+  - id: 140
+    text: "ờ"
+    intent: null
+    behavior: "Clarify hoặc small talk"
+    expected_no_match: ["lỗi", "exception"]
+    expected_contains: ["hỏi", "gì"]
+
+  - id: 141
+    text: "đm"
+    intent: null
+    behavior: "Soft warning hoặc ignore"
+    expected_no_match: ["lỗi", "exception", "Traceback"]
+
+  - id: 142
+    text: "abc"
+    intent: null
+    behavior: "Clarify 'bạn muốn hỏi gì?'"
+    expected_no_match: ["lỗi", "exception"]
+    expected_contains: ["hỏi", "gì"]
+
+  - id: 143
+    text: "dịch tiếng Anh sang Việt giúp"
+    intent: out_of_scope
+    behavior: "Out of scope — polite decline"
+    expected_no_match: ["lỗi", "exception"]
+    expected_contains: ["xin lỗi", "không", "ngoài phạm vi"]
+
+  - id: 144
+    text: "giải toán cho tôi"
+    intent: out_of_scope
+    behavior: "Out of scope"
+    expected_no_match: ["lỗi", "exception"]
+
+  - id: 145
+    text: "giá vàng hôm nay"
+    intent: out_of_scope
+    behavior: "Out of scope — but graceful"
+    expected_no_match: ["lỗi", "exception"]
+    expected_contains: ["không", "vàng"]
+
+# =============================================================================
+# EDGE CASE CATEGORY E: Negative test (đảm bảo không match nhầm)
+# =============================================================================
+
+negative_tests:
+  - id: 146
+    text: "sheet kế toán ở văn phòng tôi cũng dùng"
+    intent: null
+    behavior: "should NOT match sheet_link_request — 'sheet' trong context khác"
+    expected_no_match: ["sheet", "link", "spreadsheet"]
+    expected_contains: []
+    notes: "Negative — should not trigger any sheet handler"
+
+  - id: 147
+    text: "maps là cái gì"
+    intent: null
+    behavior: "should NOT trigger maps direction — câu hỏi định nghĩa"
+    expected_no_match: ["maps", "Sun Village"]
+    expected_contains: ["maps"]
+    notes: "Definition question — should explain, not give directions"
+
+  - id: 148
+    text: "hôm qua tôi ăn bún bò Huế ở Sài Gòn"
+    intent: null
+    behavior: "should NOT match food (current trip) — past tense + different city"
+    expected_no_match: ["bún bò Huế", "quán"]
+    expected_contains: []
+    notes: "Past tense + different city — should not match current trip food"
+
+  - id: 149
+    text: "resort của tôi ở Vũng Tàu đẹp lắm"
+    intent: null
+    behavior: "should NOT match hotel_info (current) — different location"
+    expected_no_match: ["Sun Village", "Phú Yên"]
+    expected_contains: []
+    notes: "Different location — should not match current trip hotel"
+
+# =============================================================================
+# METADATA
+# =============================================================================
+_corpus_info:
+  total_cases: 149
+  happy_path_count: 87
+  edge_case_count: 62
+  crash_expected: 5
+  known_fail: 5
+  last_updated: "2026-05-15"
+  trip_dates: "23–27/5/2026"
+  personas:
+    - P1: "Hoang (organizer) — viết tắt, ngắn"
+    - P2: "Linh (co-organizer) — formal, chi tiết tài chính"
+    - P3: "Vợ Liêm — tự nhiên, hỏi ăn/mặc/mang"
+    - P4: "Bạn không thạo tech — voice-to-text, dài"
+    - P5: "Cháu teen — trộn EN, slang, hoa lung tung"
+    - P6: "Người lần đầu đi PY — hỏi chung"
