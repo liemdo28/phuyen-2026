@@ -29,6 +29,16 @@ WRITE_INTENT_MARKERS = {
     "restaurant": ["thêm quán", "quán mới", "thêm nhà hàng", "lưu quán", "quán này ngon", "ghi lại quán"],
 }
 
+# Desire/intent markers — nếu xuất hiện mà KHÔNG có số tiền → KHÔNG phải ghi chép,
+# chỉ là user đang bày tỏ mong muốn / hỏi gợi ý.
+# Ví dụ: "muốn ăn chè" ≠ "đã ăn chè 30k"
+DESIRE_MARKERS = [
+    "muốn", "thèm", "định", "dự định", "sắp", "muốn thử",
+    "muốn ăn", "muốn uống", "muốn đi", "muốn ghé", "muốn mua",
+    "có thể", "nên ăn gì", "ăn gì", "uống gì", "đi đâu",
+    "gợi ý", "recommend", "tư vấn",
+]
+
 
 @dataclass
 class RuleExtractResult:
@@ -120,11 +130,26 @@ def extract_group(text: str) -> str | None:
     return None
 
 
+def is_desire_expression(text: str, has_amount: bool) -> bool:
+    """
+    Trả về True nếu tin nhắn là biểu đạt mong muốn/ý định chứ không phải ghi chép.
+    Ví dụ: "muốn ăn chè" → True (desire)
+           "ăn chè 30k"  → False (có số tiền = đã chi thật)
+    """
+    if has_amount:
+        return False  # có số tiền → khả năng cao là đang ghi chi tiêu thật
+    t = text.lower().strip()
+    return any(marker in t for marker in DESIRE_MARKERS)
+
+
 def detect_write_intent(text: str, has_amount: bool) -> str:
     t = text.lower()
     for intent in ("contribution", "packing", "restaurant"):
         if any(marker in t for marker in WRITE_INTENT_MARKERS[intent]):
             return intent
+    # Lọc desire trước khi classify expense — "muốn ăn X" ≠ khoản chi
+    if is_desire_expression(text, has_amount):
+        return "unknown"
     if has_amount:
         return "expense"
     if any(marker in t for marker in WRITE_INTENT_MARKERS["expense"]):

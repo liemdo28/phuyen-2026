@@ -80,6 +80,14 @@ tổng hợp 2 phần. KHÔNG hỏi lại lần nữa.
 ═══ NẾU KHÔNG PHẢI HÀNH ĐỘNG GHI ═══
 Tin là câu hỏi, chào hỏi, hoặc không liên quan ghi chép → write_intent="unknown".
 
+QUAN TRỌNG — PHÂN BIỆT MONG MUỐN vs. ĐÃ CHI:
+• "muốn ăn chè", "thèm bún cá", "muốn ghé quán X", "định đi ăn tối"
+  → Đây là biểu đạt MONG MUỐN / Ý ĐỊNH, KHÔNG phải khoản chi đã xảy ra.
+  → write_intent="unknown". KHÔNG hỏi lại số tiền.
+• "ăn chè 30k", "vừa ăn tối hết 150k", "trả 200k bữa trưa"
+  → Đây là khoản chi THẬT, đã xảy ra → write_intent="expense".
+Dấu hiệu key: có từ "muốn/thèm/định/sắp" + KHÔNG có số tiền → write_intent="unknown".
+
 ═══ FORMAT OUTPUT ═══
 CHỈ trả JSON, không markdown, không giải thích:
 {"write_intent": "...", "needs_clarification": false, "clarification_question": "", "items": [...]}
