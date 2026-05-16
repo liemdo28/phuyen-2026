@@ -179,6 +179,59 @@ def _build_messages(
     return messages
 
 
+def _sanitize_reply(text: str) -> str:
+    """
+    MANDATORY post-processing — runs on every LLM reply regardless of prompt instructions.
+    Strips markdown, removes banned phrases, truncates to 3 sentences max.
+    This is a hard enforcement layer — not dependent on LLM compliance.
+    """
+    import re
+
+    # 1. Strip markdown bold/italic (**text** → text, *text* → text)
+    text = re.sub(r'\*\*(.+?)\*\*', r'\1', text)
+    text = re.sub(r'\*(.+?)\*', r'\1', text)
+
+    # 2. Strip ATX headers (### Header → Header)
+    text = re.sub(r'^#{1,6}\s+', '', text, flags=re.MULTILINE)
+
+    # 3. Convert numbered/bulleted lists to inline sentences
+    # "1. Tuy Hòa: ..." → "Tuy Hòa: ..."
+    text = re.sub(r'^\s*\d+\.\s+', '', text, flags=re.MULTILINE)
+    text = re.sub(r'^\s*[-•*]\s+', '', text, flags=re.MULTILINE)
+
+    # 4. Collapse multiple blank lines to single newline
+    text = re.sub(r'\n{2,}', ' ', text).strip()
+    text = re.sub(r'\n', ' ', text).strip()
+
+    # 5. Remove banned opener phrases
+    _BANNED_OPENERS = [
+        "Chào bạn! 😊 Rất vui được hỗ trợ bạn",
+        "Rất vui được hỗ trợ bạn",
+        "Chào bạn! Mình rất vui",
+        "Mình rất vui được hỗ trợ",
+        "Hãy cho mình biết nhé!",
+        "Hy vọng thông tin này hữu ích",
+        "Chúc bạn có một chuyến đi vui vẻ",
+        "Dạ bạn",
+    ]
+    for phrase in _BANNED_OPENERS:
+        if text.startswith(phrase):
+            # Remove up to first sentence end after the phrase
+            idx = text.find('!', len(phrase))
+            if idx == -1:
+                idx = text.find('.', len(phrase))
+            if idx != -1:
+                text = text[idx + 1:].strip()
+            break
+
+    # 6. Truncate to 3 sentences (split on . ! ?)
+    sentences = re.split(r'(?<=[.!?])\s+', text.strip())
+    if len(sentences) > 3:
+        text = ' '.join(sentences[:3])
+
+    return text.strip()
+
+
 def _parse_companion_response(raw: str) -> CompanionReply:
     try:
         data = json.loads(raw)
@@ -188,10 +241,10 @@ def _parse_companion_response(raw: str) -> CompanionReply:
         place_name = data.get("place_name") or None
         if isinstance(place_name, str) and not place_name.strip():
             place_name = None
-        return CompanionReply(text=reply_text, place_name=place_name)
+        return CompanionReply(text=_sanitize_reply(reply_text), place_name=place_name)
     except Exception:
         logger.debug("Failed to parse LLM JSON response, using raw text: %.120s", raw)
-        return CompanionReply(text=raw)
+        return CompanionReply(text=_sanitize_reply(raw) if isinstance(raw, str) else raw)
 
 
 def _heuristic_companion_reply(text: str) -> str:

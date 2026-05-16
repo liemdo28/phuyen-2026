@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: phuyen-2026
+    name: phuyen-2026-telegram
     runtime: docker
     plan: starter
     region: singapore
