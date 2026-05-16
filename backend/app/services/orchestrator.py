@@ -252,6 +252,37 @@ class TelegramOrchestrator:
                     )
                 return
             last_lat, last_lon = self._get_last_known_coordinates(context)
+
+            # ── "Tôi đang ở đâu?" — user asks for their OWN location ──────────
+            # Must intercept BEFORE location-intent search so the bot uses stored GPS
+            # instead of falling through to companion LLM (which says "Mình chưa biết").
+            _where_am_i = (
+                "toi dang o dau", "tôi đang ở đâu",
+                "mình đang ở đâu", "minh dang o dau",
+                "tôi ở đâu", "toi o dau",
+                "đang ở đâu vậy", "dang o dau vay",
+                "bây giờ ở đâu", "bay gio o dau",
+            )
+            _norm = _strip_diacritics(incoming_text.lower())
+            if any(p in incoming_text.lower() or p in _norm for p in _where_am_i):
+                if last_lat and last_lon:
+                    maps_url = f"https://maps.google.com/?q={last_lat},{last_lon}"
+                    reply = (
+                        f"📍 Vị trí bạn đã share: {last_lat:.5f}, {last_lon:.5f}\n"
+                        f"🗺 Xem trên Maps: {maps_url}\n\n"
+                        f"Mình đang dùng vị trí này để gợi ý địa điểm gần bạn nhất nhé!"
+                    )
+                else:
+                    reply = (
+                        "Mình chưa có vị trí của bạn. Nhấn nút bên dưới để share GPS nhé!"
+                    )
+                if decision.allow_reply:
+                    await self.telegram.send_message(
+                        chat.id, reply,
+                        reply_markup=None if (last_lat and last_lon) else _request_location_keyboard(),
+                    )
+                return
+
             # Detect location intent: "mở quán hải sản", "maps", "đường tới bãi xép", etc.
             location_intent = await self.location_intel.detect_intent(
                 incoming_text,
