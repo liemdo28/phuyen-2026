@@ -1,0 +1,51 @@
+{
+  "run_id": "qa_20260516_165817",
+  "generated_at": "2026-05-16T16:58:17.305817",
+  "summary": {
+    "generated_at": "2026-05-16T16:58:17.305817",
+    "session_count": 20,
+    "violation_count": 4,
+    "pass_count": 17,
+    "fail_count": 3,
+    "zero_audit_achieved": false,
+    "total_sessions": 20,
+    "total_violations": 4,
+    "pass_rate": 85.0,
+    "overall_score": 8.0,
+    "grade": "A"
+  },
+  "dev_fix_queue": [
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "có chỗ đủ chỗ ngồi cho nhóm không",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    },
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "thôi kệ đi đâu cũng được",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    },
+    {
+      "rule": "missed_location_guidance",
+      "severity": "MEDIUM",
+      "user_message": "thôi kệ đi đâu cũng được",
+      "reason": "User hỏi địa điểm nhưng response không điều hướng theo vị trí.",
+      "fix_suggestion": "Hỏi khu vực đang ở hoặc cung cấp gợi ý địa điểm cụ thể.",
+      "replayable": true
+    },
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "bé có thể xuống biển không",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    }
+  ]
+}

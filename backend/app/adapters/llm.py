@@ -24,7 +24,12 @@ Respond with valid JSON only, no markdown:
   "place_name": "<exact place name from local database if you recommend one, else null>"
 }
 
-The place_name must match one of the known Phú Yên places if applicable, otherwise null.
+CRITICAL reply rules:
+- Maximum 2-3 sentences. Never write paragraphs.
+- Do NOT start with "Chào bạn!" or any greeting.
+- Do NOT end with "Mình rất vui được hỗ trợ!" or similar.
+- Do NOT explain what you're about to say — just say it.
+- Sound like a friend texting, not a customer service agent.
 """
 
 
@@ -99,8 +104,8 @@ class LLMAdapter:
                 response = await client.chat.completions.create(
                     model=settings.openai_model,
                     messages=messages,
-                    temperature=0.7,
-                    max_tokens=512,
+                    temperature=0.5,
+                    max_tokens=200,
                     response_format={"type": "json_object"},
                 )
             raw = response.choices[0].message.content or "{}"
@@ -325,5 +330,9 @@ def _heuristic_companion_reply(text: str) -> str:
     # Name query
     if any(w in t for w in ["mi là ai", "tên gì", "bạn là ai", "mi tên gì", "ai vậy"]):
         return "Mình là Mi — bạn đồng hành chuyến Phú Yên của bạn 😊 Cần gì cứ hỏi mình nhé!"
+
+    # Location self-query (fallback if orchestrator intercept missed)
+    if any(w in t for w in ["đang ở đâu", "toi dang o dau", "o dau vay"]):
+        return "Bạn chưa share vị trí cho mình. Nhấn 📎 → Location để share GPS nhé!"
 
     return "Mình đây — cần gì cứ nói nhé! 😊"

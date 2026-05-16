@@ -204,6 +204,32 @@ class TelegramOrchestrator:
                     await self.telegram.send_message(chat.id, "Mình đã nhận nội dung này, nhưng hiện chỉ mới xử lý tốt text/voice/ảnh theo pipeline AI mới.")
                 return
 
+            # ── FAST PATH: "Tôi đang ở đâu?" — intercept FIRST before any LLM ──
+            _t_lower = incoming_text.lower().strip()
+            _where_patterns = (
+                "tôi đang ở đâu", "toi dang o dau",
+                "mình đang ở đâu", "minh dang o dau",
+                "đang ở đâu", "dang o dau",
+                "tôi ở đâu", "toi o dau",
+                "bây giờ ở đâu", "bay gio o dau",
+            )
+            if any(p in _t_lower for p in _where_patterns):
+                _last_lat, _last_lon = self._get_last_known_coordinates(context)
+                if _last_lat and _last_lon:
+                    _maps = f"https://maps.google.com/?q={_last_lat},{_last_lon}"
+                    _loc_reply = (
+                        f"📍 Vị trí bạn đã share: {_last_lat:.5f}, {_last_lon:.5f}\n"
+                        f"Xem Maps: {_maps}"
+                    )
+                else:
+                    _loc_reply = "Bạn chưa share vị trí cho mình. Nhấn nút bên dưới để share GPS nhé 📍"
+                if decision.allow_reply:
+                    await self.telegram.send_message(
+                        chat.id, _loc_reply,
+                        reply_markup=None if (_last_lat and _last_lon) else _request_location_keyboard(),
+                    )
+                return
+
             # FAST PATH: deterministic shortcuts (sheet link, maps) — must run
             # before the heavy LLM/Brain/Society stack so they can't be eaten by
             # upstream failures.

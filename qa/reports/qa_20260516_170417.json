@@ -1,0 +1,51 @@
+{
+  "run_id": "qa_20260516_170417",
+  "generated_at": "2026-05-16T17:04:17.726749",
+  "summary": {
+    "generated_at": "2026-05-16T17:04:17.726749",
+    "session_count": 20,
+    "violation_count": 4,
+    "pass_count": 16,
+    "fail_count": 4,
+    "zero_audit_achieved": false,
+    "total_sessions": 20,
+    "total_violations": 4,
+    "pass_rate": 80.0,
+    "overall_score": 8.0,
+    "grade": "A"
+  },
+  "dev_fix_queue": [
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "ăn hết 150k",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    },
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "đi nhậu đi mọi người",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    },
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "sóng có to không cho bé xuống được không",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    },
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "thoi tiet hom nay the nao",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    }
+  ]
+}
