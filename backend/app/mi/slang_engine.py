@@ -2,11 +2,16 @@
 Mi Slang Engine — Vietnamese internet culture, Gen Z, miền Tây, typos, no-accent.
 
 Normalizes chaotic human input so Mi always understands real intent.
+Miền Tây-specific patterns are handled by app.mi.mien_tay (full cultural engine).
 """
 from __future__ import annotations
 
 import re
 import unicodedata
+
+from app.mi.mien_tay.data import DIALECT_MARKERS as _MIEN_TAY_DIALECT_MARKERS
+from app.mi.mien_tay.data import NO_ACCENT_MAP as _MIEN_TAY_NO_ACCENT
+from app.mi.mien_tay.data import TYPO_PATTERNS as _MIEN_TAY_TYPOS
 
 # ── No-accent normalization map ────────────────────────────────────────────────
 _NO_ACCENT: dict[str, str] = {
@@ -128,11 +133,7 @@ _TYPO_CORRECTIONS: dict[str, str] = {
 }
 
 # ── Detection patterns ─────────────────────────────────────────────────────────
-MIEN_TAY_MARKERS = frozenset([
-    "hen", "nhen", "nghen", "dzậy", "dzô", "dzề",
-    "hông", "hổng", "ổng", "bả", "tui", "mầy",
-    "vậy nhen", "thôi nha", "cái này nè", "mà nè", "nà", "hà",
-])
+MIEN_TAY_MARKERS = _MIEN_TAY_DIALECT_MARKERS  # expanded from mien_tay module
 
 GEN_Z_MARKERS = frozenset([
     "quẩy", "phê", "siuuu", "đỉnh kout", "xịn sò", "flex",
@@ -184,6 +185,10 @@ def normalize_slang(text: str) -> str:
     """
     t = text.lower().strip()
 
+    # Miền Tây typos (elongated chars) — run first before other passes
+    for k, v in _MIEN_TAY_TYPOS.items():
+        t = t.replace(k.lower(), v)
+
     # Emotional shorthand
     for k, v in _EMOTIONAL_SHORTHAND.items():
         t = t.replace(k, f" {v} ")
@@ -192,8 +197,12 @@ def normalize_slang(text: str) -> str:
     for k, v in _INTERNET_CULTURE.items():
         t = t.replace(k, f" {v} ")
 
-    # Miền Tây slang
-    for k, v in _MIEN_TAY_SLANG.items():
+    # Miền Tây slang (from full cultural DB, longer phrases first)
+    for k, v in sorted(_MIEN_TAY_SLANG.items(), key=lambda x: len(x[0]), reverse=True):
+        t = t.replace(k, f" {v} ")
+
+    # Miền Tây no-accent forms (longer forms first)
+    for k, v in sorted(_MIEN_TAY_NO_ACCENT.items(), key=len, reverse=True):
         t = t.replace(k, f" {v} ")
 
     # Gen Z
@@ -208,7 +217,7 @@ def normalize_slang(text: str) -> str:
     for k, v in _NO_ACCENT.items():
         t = re.sub(rf"\b{re.escape(k)}\b", v, t)
 
-    return t.strip()
+    return re.sub(r"\s+", " ", t).strip()
 
 
 def is_mien_tay(text: str) -> bool:
