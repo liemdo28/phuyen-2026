@@ -1,0 +1,51 @@
+{
+  "run_id": "qa_20260516_141005",
+  "generated_at": "2026-05-16T14:10:05.892940",
+  "summary": {
+    "generated_at": "2026-05-16T14:10:05.892940",
+    "session_count": 20,
+    "violation_count": 4,
+    "pass_count": 16,
+    "fail_count": 4,
+    "zero_audit_achieved": false,
+    "total_sessions": 20,
+    "total_violations": 4,
+    "pass_rate": 80.0,
+    "overall_score": 8.0,
+    "grade": "A"
+  },
+  "dev_fix_queue": [
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "trời nóng quá làm gì bây giờ",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    },
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "nắng gắt quá vào trong không",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    },
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "hết hồn sóng to vậy",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    },
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "bun ca o day ngon khong",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    }
+  ]
+}

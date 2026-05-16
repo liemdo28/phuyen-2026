@@ -1,0 +1,83 @@
+{
+  "run_id": "qa_20260516_141606",
+  "generated_at": "2026-05-16T14:16:06.181874",
+  "summary": {
+    "generated_at": "2026-05-16T14:16:06.181874",
+    "session_count": 20,
+    "violation_count": 8,
+    "pass_count": 14,
+    "fail_count": 6,
+    "zero_audit_achieved": false,
+    "total_sessions": 20,
+    "total_violations": 8,
+    "pass_rate": 70.0,
+    "overall_score": 6.0,
+    "grade": "C"
+  },
+  "dev_fix_queue": [
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "đi",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    },
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "hồi nãy mình ăn rồi giờ làm gì",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    },
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "bun ca o day ngon khong",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    },
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "đi cả gia đình 5 người",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    },
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "muốn nhậu tối nay chỗ nào",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    },
+    {
+      "rule": "missed_location_guidance",
+      "severity": "MEDIUM",
+      "user_message": "muốn nhậu tối nay chỗ nào",
+      "reason": "User hỏi địa điểm nhưng response không điều hướng theo vị trí.",
+      "fix_suggestion": "Hỏi khu vực đang ở hoặc cung cấp gợi ý địa điểm cụ thể.",
+      "replayable": true
+    },
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "thôi kệ đi đâu cũng được",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    },
+    {
+      "rule": "missed_location_guidance",
+      "severity": "MEDIUM",
+      "user_message": "thôi kệ đi đâu cũng được",
+      "reason": "User hỏi địa điểm nhưng response không điều hướng theo vị trí.",
+      "fix_suggestion": "Hỏi khu vực đang ở hoặc cung cấp gợi ý địa điểm cụ thể.",
+      "replayable": true
+    }
+  ]
+}

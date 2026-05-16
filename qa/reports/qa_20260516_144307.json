@@ -1,0 +1,91 @@
+{
+  "run_id": "qa_20260516_144307",
+  "generated_at": "2026-05-16T14:43:07.540050",
+  "summary": {
+    "generated_at": "2026-05-16T14:43:07.540050",
+    "session_count": 20,
+    "violation_count": 9,
+    "pass_count": 13,
+    "fail_count": 7,
+    "zero_audit_achieved": false,
+    "total_sessions": 20,
+    "total_violations": 9,
+    "pass_rate": 65.0,
+    "overall_score": 5.5,
+    "grade": "F"
+  },
+  "dev_fix_queue": [
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "muốn nhậu tối nay chỗ nào",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    },
+    {
+      "rule": "missed_location_guidance",
+      "severity": "MEDIUM",
+      "user_message": "muốn nhậu tối nay chỗ nào",
+      "reason": "User hỏi địa điểm nhưng response không điều hướng theo vị trí.",
+      "fix_suggestion": "Hỏi khu vực đang ở hoặc cung cấp gợi ý địa điểm cụ thể.",
+      "replayable": true
+    },
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "tim cho nghi mat",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    },
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "trời mưa thì đi đâu được",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    },
+    {
+      "rule": "missed_location_guidance",
+      "severity": "MEDIUM",
+      "user_message": "trời mưa thì đi đâu được",
+      "reason": "User hỏi địa điểm nhưng response không điều hướng theo vị trí.",
+      "fix_suggestion": "Hỏi khu vực đang ở hoặc cung cấp gợi ý địa điểm cụ thể.",
+      "replayable": true
+    },
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "cần chỗ ngồi thư giãn không ồn",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    },
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "đi bộ thôi không muốn lấy xe",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    },
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "thoi tiet hom nay the nao",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    },
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "muốn ăn hải sản tươi ở đây",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    }
+  ]
+}

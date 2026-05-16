@@ -1,0 +1,67 @@
+{
+  "run_id": "qa_20260516_150108",
+  "generated_at": "2026-05-16T15:01:08.230436",
+  "summary": {
+    "generated_at": "2026-05-16T15:01:08.230436",
+    "session_count": 20,
+    "violation_count": 6,
+    "pass_count": 14,
+    "fail_count": 6,
+    "zero_audit_achieved": false,
+    "total_sessions": 20,
+    "total_violations": 6,
+    "pass_rate": 70.0,
+    "overall_score": 7.0,
+    "grade": "B"
+  },
+  "dev_fix_queue": [
+    {
+      "rule": "missed_location_guidance",
+      "severity": "MEDIUM",
+      "user_message": "tìm quán ăn gần đây",
+      "reason": "User hỏi địa điểm nhưng response không điều hướng theo vị trí.",
+      "fix_suggestion": "Hỏi khu vực đang ở hoặc cung cấp gợi ý địa điểm cụ thể.",
+      "replayable": true
+    },
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "sóng có to không cho bé xuống được không",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    },
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "gan thoi ngai di",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    },
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "nắng gắt quá vào trong không",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    },
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "ok",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    },
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "kiệt sức rồi cho nghỉ tí",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    }
+  ]
+}

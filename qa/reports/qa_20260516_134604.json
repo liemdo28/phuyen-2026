@@ -1,0 +1,83 @@
+{
+  "run_id": "qa_20260516_134604",
+  "generated_at": "2026-05-16T13:46:04.088664",
+  "summary": {
+    "generated_at": "2026-05-16T13:46:04.088664",
+    "session_count": 20,
+    "violation_count": 8,
+    "pass_count": 14,
+    "fail_count": 6,
+    "zero_audit_achieved": false,
+    "total_sessions": 20,
+    "total_violations": 8,
+    "pass_rate": 70.0,
+    "overall_score": 6.0,
+    "grade": "C"
+  },
+  "dev_fix_queue": [
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "ờ thì cũng được",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    },
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "tim cho nghi mat",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    },
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "có chỗ đủ chỗ ngồi cho nhóm không",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    },
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "sáng đã đi Gành rồi chiều đi đâu",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    },
+    {
+      "rule": "missed_location_guidance",
+      "severity": "MEDIUM",
+      "user_message": "sáng đã đi Gành rồi chiều đi đâu",
+      "reason": "User hỏi địa điểm nhưng response không điều hướng theo vị trí.",
+      "fix_suggestion": "Hỏi khu vực đang ở hoặc cung cấp gợi ý địa điểm cụ thể.",
+      "replayable": true
+    },
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "trời mưa thì đi đâu được",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    },
+    {
+      "rule": "missed_location_guidance",
+      "severity": "MEDIUM",
+      "user_message": "trời mưa thì đi đâu được",
+      "reason": "User hỏi địa điểm nhưng response không điều hướng theo vị trí.",
+      "fix_suggestion": "Hỏi khu vực đang ở hoặc cung cấp gợi ý địa điểm cụ thể.",
+      "replayable": true
+    },
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "hmm",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    }
+  ]
+}

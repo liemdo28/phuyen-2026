@@ -1,0 +1,59 @@
+{
+  "run_id": "qa_20260516_143407",
+  "generated_at": "2026-05-16T14:34:07.083257",
+  "summary": {
+    "generated_at": "2026-05-16T14:34:07.083257",
+    "session_count": 20,
+    "violation_count": 5,
+    "pass_count": 15,
+    "fail_count": 5,
+    "zero_audit_achieved": false,
+    "total_sessions": 20,
+    "total_violations": 5,
+    "pass_rate": 75.0,
+    "overall_score": 7.5,
+    "grade": "B"
+  },
+  "dev_fix_queue": [
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "cần chỗ ngồi thư giãn không ồn",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    },
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "t thèm bánh căn ơi",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    },
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "bé có thể xuống biển không",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    },
+    {
+      "rule": "missed_location_guidance",
+      "severity": "MEDIUM",
+      "user_message": "mệt quá không muốn đi đâu cả",
+      "reason": "User hỏi địa điểm nhưng response không điều hướng theo vị trí.",
+      "fix_suggestion": "Hỏi khu vực đang ở hoặc cung cấp gợi ý địa điểm cụ thể.",
+      "replayable": true
+    },
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "ăn hết 150k",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    }
+  ]
+}

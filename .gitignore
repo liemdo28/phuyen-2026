@@ -8,6 +8,8 @@ backend/**/__pycache__/
 backend/telegram_ai_backend.egg-info/
 backend/node_modules/
 backend/.state/
+backend/build/
+*.sqlite3
 qa/**/__pycache__/
 qa/qa_loop.log
 qa/qa_loop.pid

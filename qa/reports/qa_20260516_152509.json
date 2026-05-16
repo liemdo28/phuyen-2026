@@ -1,0 +1,83 @@
+{
+  "run_id": "qa_20260516_152509",
+  "generated_at": "2026-05-16T15:25:09.525945",
+  "summary": {
+    "generated_at": "2026-05-16T15:25:09.525945",
+    "session_count": 20,
+    "violation_count": 8,
+    "pass_count": 13,
+    "fail_count": 7,
+    "zero_audit_achieved": false,
+    "total_sessions": 20,
+    "total_violations": 8,
+    "pass_rate": 65.0,
+    "overall_score": 6.0,
+    "grade": "C"
+  },
+  "dev_fix_queue": [
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "hmm",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    },
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "chèn ơi nóng ghê",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    },
+    {
+      "rule": "missed_food_need",
+      "severity": "HIGH",
+      "user_message": "chèn ơi nóng ghê",
+      "reason": "User đang hỏi ăn/uống nhưng response không đưa hướng xử lý phù hợp.",
+      "fix_suggestion": "Ưu tiên gợi ý ăn/uống gần, ít lựa chọn, dễ đi.",
+      "replayable": true
+    },
+    {
+      "rule": "missed_location_guidance",
+      "severity": "MEDIUM",
+      "user_message": "mệt muốn chết đi đâu cũng lười",
+      "reason": "User hỏi địa điểm nhưng response không điều hướng theo vị trí.",
+      "fix_suggestion": "Hỏi khu vực đang ở hoặc cung cấp gợi ý địa điểm cụ thể.",
+      "replayable": true
+    },
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "ơi mệt lắm chân không bước nổi",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    },
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "có sứa ở bãi biển không",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    },
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "có cần đặt trước không",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    },
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "tiêu hôm nay bao nhiêu",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    }
+  ]
+}

@@ -1,0 +1,43 @@
+{
+  "run_id": "qa_20260516_144007",
+  "generated_at": "2026-05-16T14:40:07.406672",
+  "summary": {
+    "generated_at": "2026-05-16T14:40:07.406672",
+    "session_count": 20,
+    "violation_count": 3,
+    "pass_count": 18,
+    "fail_count": 2,
+    "zero_audit_achieved": false,
+    "total_sessions": 20,
+    "total_violations": 3,
+    "pass_rate": 90.0,
+    "overall_score": 8.5,
+    "grade": "A"
+  },
+  "dev_fix_queue": [
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "đi",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    },
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "chỗ nào gần đây ngon",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    },
+    {
+      "rule": "missed_location_guidance",
+      "severity": "MEDIUM",
+      "user_message": "chỗ nào gần đây ngon",
+      "reason": "User hỏi địa điểm nhưng response không điều hướng theo vị trí.",
+      "fix_suggestion": "Hỏi khu vực đang ở hoặc cung cấp gợi ý địa điểm cụ thể.",
+      "replayable": true
+    }
+  ]
+}

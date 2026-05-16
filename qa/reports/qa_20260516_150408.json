@@ -1,0 +1,51 @@
+{
+  "run_id": "qa_20260516_150408",
+  "generated_at": "2026-05-16T15:04:08.385453",
+  "summary": {
+    "generated_at": "2026-05-16T15:04:08.385453",
+    "session_count": 20,
+    "violation_count": 4,
+    "pass_count": 17,
+    "fail_count": 3,
+    "zero_audit_achieved": false,
+    "total_sessions": 20,
+    "total_violations": 4,
+    "pass_rate": 85.0,
+    "overall_score": 8.0,
+    "grade": "A"
+  },
+  "dev_fix_queue": [
+    {
+      "rule": "missed_location_guidance",
+      "severity": "MEDIUM",
+      "user_message": "thôi kệ đi đâu cũng được",
+      "reason": "User hỏi địa điểm nhưng response không điều hướng theo vị trí.",
+      "fix_suggestion": "Hỏi khu vực đang ở hoặc cung cấp gợi ý địa điểm cụ thể.",
+      "replayable": true
+    },
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "kiếm chỗ chill chill đi",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    },
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "doi qua an gi day",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    },
+    {
+      "rule": "missed_food_need",
+      "severity": "HIGH",
+      "user_message": "doi qua an gi day",
+      "reason": "User đang hỏi ăn/uống nhưng response không đưa hướng xử lý phù hợp.",
+      "fix_suggestion": "Ưu tiên gợi ý ăn/uống gần, ít lựa chọn, dễ đi.",
+      "replayable": true
+    }
+  ]
+}
