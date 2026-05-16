@@ -118,7 +118,12 @@ async def fetch_weather_for_place(place: str) -> WeatherContext | None:
         if not times:
             return None
 
-        idx = 0  # Today
+        # Find today's index — API returns dates starting from TRIP_START (2026-05-23).
+        # Hardcoding idx=0 would always return May 23's forecast regardless of actual date.
+        from datetime import date
+        trip_start = date.fromisoformat(TRIP_START)
+        today = date.today()
+        idx = max(0, min((today - trip_start).days, len(times) - 1))
         code    = daily["weathercode"][idx]
         tmax    = daily["temperature_2m_max"][idx]
         tmin    = daily["temperature_2m_min"][idx]

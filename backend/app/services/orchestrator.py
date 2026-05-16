@@ -800,6 +800,7 @@ class TelegramOrchestrator:
             try:
                 place = find_place(candidate)
             except Exception:
+                logger.debug("maps_lookup_failed candidate=%r", candidate)
                 place = None
             if place is not None:
                 return place

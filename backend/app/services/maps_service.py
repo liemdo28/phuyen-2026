@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import logging
 import math
 from dataclasses import dataclass
 from urllib.parse import quote
 import unicodedata
+
+logger = logging.getLogger(__name__)
 
 # ── Local Phú Yên place database ─────────────────────────────────────────────
 # When Google Maps API key is available: replace with live Place Search results.
@@ -205,6 +208,7 @@ def _check_hours(hours_str: str) -> tuple[bool, bool]:
         closing_soon = open_now and (close_time - now).total_seconds() < 3600
         return open_now, closing_soon
     except Exception:
+        logger.warning("Malformed hours string %r — defaulting to open", hours_str)
         return True, False
 
 

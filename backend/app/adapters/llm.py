@@ -122,11 +122,14 @@ def _parse_companion_response(raw: str) -> CompanionReply:
     try:
         data = json.loads(raw)
         reply_text = data.get("reply") or data.get("message") or raw
+        # data.get("place_name") returns Python None for JSON null — the `or None`
+        # handles that. The "null" string check was dead code after json.loads.
         place_name = data.get("place_name") or None
-        if place_name == "null" or place_name == "":
+        if isinstance(place_name, str) and not place_name.strip():
             place_name = None
         return CompanionReply(text=reply_text, place_name=place_name)
     except Exception:
+        logger.debug("Failed to parse LLM JSON response, using raw text: %.120s", raw)
         return CompanionReply(text=raw)
 
 

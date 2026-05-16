@@ -59,11 +59,27 @@ def test_adapt_reply_compresses_for_stressed_user() -> None:
 
 
 class DummySheets:
-    pass
+    """Minimal async stub matching GoogleSheetsAdapter's interface for unit tests."""
+
+    async def create_record(self, domain: str, payload: dict) -> object:
+        from app.adapters.google_sheets import SheetsActionResult
+        return SheetsActionResult(success=True, message="stub", rows=[payload])
+
+    async def update_latest_record(self, domain: str, payload: dict) -> object:
+        from app.adapters.google_sheets import SheetsActionResult
+        return SheetsActionResult(success=False, message="stub")
+
+    async def delete_record(self, domain: str, payload: dict) -> object:
+        from app.adapters.google_sheets import SheetsActionResult
+        return SheetsActionResult(success=False, message="stub")
+
+    async def query_records(self, domain: str, filters: dict) -> object:
+        from app.adapters.google_sheets import SheetsActionResult
+        return SheetsActionResult(success=True, message="stub", rows=[])
 
 
 def test_workflow_engine_travel_reply_changes_with_mood() -> None:
-    engine = WorkflowEngine(DummySheets())  # type: ignore[arg-type]
+    engine = WorkflowEngine(DummySheets())
     companion = TravelCompanionEngine()
     context = UserContext(chat_id=1, user_id=1)
     now = datetime(2026, 5, 15, 17, 15, tzinfo=ZoneInfo("Asia/Ho_Chi_Minh"))

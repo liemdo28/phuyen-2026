@@ -361,18 +361,36 @@ class GoogleSheetsAdapter:
             rows=[target],
         )
 
+    async def delete_record(self, domain: str, payload: dict[str, Any]) -> SheetsActionResult:
+        rows = self._memory_db.get(domain, [])
+        if not rows:
+            return SheetsActionResult(success=False, message="Không có bản ghi nào để xoá.")
+        target = self._resolve_target_row(rows, payload)
+        if not target:
+            return SheetsActionResult(success=False, message="Không tìm thấy bản ghi phù hợp để xoá.")
+        self._memory_db[domain] = [r for r in rows if r is not target]
+        return SheetsActionResult(success=True, message="Đã xoá bản ghi.", rows=[target])
+
     def _resolve_target_row(
         self, rows: list[dict[str, Any]], payload: dict[str, Any]
     ) -> dict[str, Any] | None:
+        if not rows:
+            return None
         entity_reference = str(payload.get("entity_reference") or "").lower()
         entity_name = str(payload.get("entity_name") or "").lower()
+        # Contextual pronouns always refer to the most recent row
         if entity_reference in {
             "cái hôm qua", "hôm qua", "cái trên", "task kia", "task này",
             "bill này", "khoản đó",
         }:
             return rows[-1]
+        # Name-based lookup: search newest-first
         if entity_name:
             for row in reversed(rows):
                 if entity_name in str(row.get("entity_name", "")).lower():
                     return row
+            # No match found — return None so the caller can handle the miss
+            # instead of silently modifying the last unrelated row
+            return None
+        # No reference and no name — default to most recent row
         return rows[-1]

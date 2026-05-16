@@ -17,7 +17,7 @@ class WorkflowEngine:
         if intent.intent_type == "query":
             return await self._handle_query(intent, companion_state)
         if intent.intent_type == "delete":
-            return AssistantResponse(text="Mình hiểu ý xoá rồi, nhưng backend xoá cứng chưa được bật ở môi trường này.")
+            return await self._handle_delete(intent)
         return AssistantResponse(text=self._chat_reply(intent, companion_state))
 
     async def _handle_create(self, intent: AssistantIntent) -> AssistantResponse:
@@ -32,9 +32,18 @@ class WorkflowEngine:
             return AssistantResponse(text="Mình chưa thấy bản ghi phù hợp để cập nhật. Nếu bạn muốn, mình có thể tạo mới luôn.")
         return build_sheet_response(result, success_text="Mình đã cập nhật lại giúp bạn.")
 
+    async def _handle_delete(self, intent: AssistantIntent) -> AssistantResponse:
+        domain = normalize_domain(intent.domain)
+        result = await self.sheets.delete_record(domain, intent.extracted_fields)
+        if not result.success:
+            return AssistantResponse(text=result.message or "Mình chưa tìm thấy bản ghi phù hợp để xoá.")
+        return AssistantResponse(text="Đã xoá bản ghi rồi nhé.", action_summary=result.message)
+
     async def _handle_query(self, intent: AssistantIntent, companion_state: TravelCompanionState | None = None) -> AssistantResponse:
         domain = normalize_domain(intent.domain)
-        result = await self.sheets.query_records(domain, {})
+        # Pass extracted_fields as filters so user constraints (date, category, etc.) are applied
+        filters = intent.extracted_fields or {}
+        result = await self.sheets.query_records(domain, filters)
         if domain == "travel":
             return AssistantResponse(text=self._travel_reply(intent, companion_state))
         if not result.rows:
