@@ -101,8 +101,9 @@ def _greeting_reply(user_id: int | None) -> str:
     from app.mi.identity import MEMBER_REGISTRY
     if user_id and user_id in MEMBER_REGISTRY:
         m = MEMBER_REGISTRY[user_id]
-        address = f"{m['user_address']} {m['name']}"
-        return f"Chào {address}! Em đây rồi 😊 {m['user_address'].capitalize()} cần gì không?"
+        # TripMember dataclass — use attribute access
+        address = f"{m.mi_calls_them} {m.display_name}"
+        return f"Chào {address}! Em đây rồi 😊 {m.mi_calls_them.capitalize()} cần gì không?"
     # Unknown user — safe default for this group (everyone is older than Mi)
     return "Chào anh/chị! Em là Mi — bạn đồng hành Phú Yên 2026 😊 Cần gì cứ hỏi em nhé."
 
@@ -119,12 +120,13 @@ def _member_guidance(user_id: int | None) -> str:
             "NEVER use 'mình' or 'bạn' for self-reference in this conversation."
         )
     m = MEMBER_REGISTRY[user_id]
+    # TripMember dataclass — use attribute access
     return (
         f"## Member Pronoun Context\n"
-        f"User is {m['name']} (born {m['born']}, {m['gender']}). "
-        f"Address them as '{m['user_address']}' or '{m['user_address']} {m['name']}'. "
-        f"Mi refers to herself as '{m['mi_self']}'. "
-        f"NEVER use 'mình' or 'bạn' as self-reference — ALWAYS use '{m['mi_self']}'."
+        f"User is {m.display_name}. "
+        f"Address them as '{m.mi_calls_them}' or '{m.mi_calls_them} {m.display_name}'. "
+        f"Mi refers to herself as '{m.mi_self}'. "
+        f"NEVER use 'mình' or 'bạn' as self-reference — ALWAYS use '{m.mi_self}'."
     )
 
 
