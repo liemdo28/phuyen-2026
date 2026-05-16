@@ -53,6 +53,7 @@ class LLMAdapter:
         self.system_prompt = Path(__file__).resolve().parents[1] / "prompts" / "system_prompt.txt"
         # Lazy import to avoid circular deps
         self._mi_engine = None
+        self._mien_tay_engine = None
 
     def _get_mi_engine(self):
         if self._mi_engine is None:
@@ -62,6 +63,15 @@ class LLMAdapter:
             except Exception as e:
                 logger.warning("MiEngine unavailable: %s", e)
         return self._mi_engine
+
+    def _get_mien_tay_engine(self):
+        if self._mien_tay_engine is None:
+            try:
+                from app.mi.mien_tay import MienTayEngine
+                self._mien_tay_engine = MienTayEngine()
+            except Exception as e:
+                logger.warning("MienTayEngine unavailable: %s", e)
+        return self._mien_tay_engine
 
     async def detect_intent(self, message_text: str, memory_summary: str) -> LLMResult:
         intent = heuristic_intent_parse(message_text, memory_summary=memory_summary)
@@ -95,8 +105,25 @@ class LLMAdapter:
             except Exception as e:
                 logger.warning("MiEngine.analyze failed: %s", e)
 
+        # Enrich with Miền Tây cultural intelligence if Southern dialect detected
+        mien_tay_guidance = ""
+        mt_engine = self._get_mien_tay_engine()
+        if mt_engine:
+            try:
+                mt_ctx = mt_engine.analyze(message_text)
+                if mt_ctx.is_mien_tay:
+                    mien_tay_guidance = mt_engine.build_llm_guidance(mt_ctx)
+                    logger.debug(
+                        "MienTay: score=%.0f%% signals=%s exaggeration=%s",
+                        mt_ctx.dialect_score * 100,
+                        [s.value for s in mt_ctx.signals],
+                        mt_ctx.is_exaggeration,
+                    )
+            except Exception as e:
+                logger.warning("MienTayEngine.analyze failed: %s", e)
+
         combined_guidance = "\n\n".join(
-            p for p in [interaction_guidance, mi_guidance] if p
+            p for p in [interaction_guidance, mi_guidance, mien_tay_guidance] if p
         )
         system = _build_system_prompt(trip_context_str, combined_guidance) + _STRUCTURED_SUFFIX
         messages = _build_messages(system, conversation_history, message_text)
@@ -351,5 +378,15 @@ def _heuristic_companion_reply(text: str) -> str:
     # Location self-query (fallback if orchestrator intercept missed)
     if any(w in t for w in ["đang ở đâu", "toi dang o dau", "o dau vay"]):
         return "Bạn chưa share vị trí cho mình. Nhấn 📎 → Location để share GPS nhé!"
+
+    # Miền Tây social warmth / soft negotiation fallback
+    if any(w in t for w in ["hông ấy", "hong ay", "hay vầy", "hay vay di", "thôi kệ heng", "tính sau hen"]):
+        return "Ừ, tính sau cũng được nhen 😊 Cần gì cứ nói mình lo."
+
+    if any(w in t for w in ["nhậu hông", "nhau hong", "làm vài lon", "lai rai", "quán ruột"]):
+        return "Nhậu thì kiếm hải sản hoặc mực nướng Sông Cầu — mồi tươi, lai rai được lắm nhen."
+
+    if any(w in t for w in ["cafe võng", "cafe vong", "cafe sân vườn"]):
+        return "Cafe võng thì Bãi Xép có vài chỗ chill dữ lắm — view biển, ngồi đung đưa ngắm sóng nhen."
 
     return "Mình đây — cần gì cứ nói nhé! 😊"
