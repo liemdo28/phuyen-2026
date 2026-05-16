@@ -35,5 +35,50 @@ services:
         sync: false
       - key: DEFAULT_SPREADSHEET_ID
         sync: false
+      - key: DEFAULT_SPREADSHEET_URL
+        sync: false
+      - key: GOOGLE_SERVICE_ACCOUNT_JSON
+        sync: false
+  - type: cron
+    name: phuyen-2026-qa-audit
+    runtime: docker
+    plan: starter
+    region: singapore
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    schedule: "*/4 * * * *"
+    autoDeployTrigger: commit
+    startCommand: "sh /app/qa/run_autonomous_qa.sh"
+    disk:
+      name: phuyen-qa-data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: DB_PATH
+        value: /data/telegram_ai.sqlite3
+      - key: STATE_DIR
+        value: /data
+      - key: APP_ENV
+        value: production
+      - key: QA_BACKEND_URL
+        value: https://phuyen-2026.onrender.com
+      - key: QA_MAX_SCENARIOS
+        value: "80"
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_WEBHOOK_SECRET
+        sync: false
+      - key: SHEETS_WEBAPP_URL
+        sync: false
+      - key: SHEETS_API_SECRET
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: DEFAULT_SPREADSHEET_ID
+        sync: false
+      - key: DEFAULT_SPREADSHEET_URL
+        sync: false
       - key: GOOGLE_SERVICE_ACCOUNT_JSON
         sync: false

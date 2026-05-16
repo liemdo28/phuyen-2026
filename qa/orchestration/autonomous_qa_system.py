@@ -157,8 +157,8 @@ class AutonomousQAOrchestrationSystem:
                     {
                         "original_session_id": item.original_session_id,
                         "replay_attempt": item.replay_attempt,
-                        "original_audit": item.original_audit.value,
-                        "replay_audit": item.replay_audit.value,
+                        "original_audit": item.original_audit,
+                        "replay_audit": item.replay_audit,
                         "violations_before": item.violations_before,
                         "violations_after": item.violations_after,
                         "fixed": item.fixed,
