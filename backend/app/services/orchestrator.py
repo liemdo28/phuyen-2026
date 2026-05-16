@@ -777,7 +777,7 @@ class TelegramOrchestrator:
             place_lat, place_lon = None, None
             if companion.place_name:
                 mi_place = mi_get_place(
-                    companion.place_name.lower().replace(" ", "_").replace("ã", "a").replace("ề", "e")
+                    _strip_diacritics(companion.place_name).replace(" ", "_")
                 )
                 if mi_place:
                     place_lat, place_lon = mi_place.lat, mi_place.lon
@@ -797,7 +797,7 @@ class TelegramOrchestrator:
                 place_name=mi_response.place_name or companion.place_name,
             )
         except Exception as _mi_ex:
-            logger.debug("Mi response shaping skipped: %s", _mi_ex)
+            logger.warning("Mi response shaping skipped: %s", _mi_ex)
             # Fallback: use existing maps keyboard
             if companion.place_name:
                 place = find_place(companion.place_name)
