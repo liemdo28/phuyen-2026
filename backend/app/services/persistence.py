@@ -3,12 +3,15 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timezone
 import json
+import logging
 from pathlib import Path
 import sqlite3
 import threading
 from typing import Any
 
 from app.core.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -28,11 +31,32 @@ class PersistedEntity:
 
 class PersistenceStore:
     def __init__(self) -> None:
-        db_path = Path(settings.db_path)
-        db_path.parent.mkdir(parents=True, exist_ok=True)
+        db_path = self._resolve_db_path()
         self._db_path = db_path
         self._lock = threading.Lock()
         self._init_db()
+
+    @staticmethod
+    def _resolve_db_path() -> Path:
+        """
+        Try the configured DB_PATH first. If the directory can't be created or
+        SQLite can't open the file (e.g. disk not mounted on Render), fall back
+        to /tmp so the service still boots without persistent storage.
+        """
+        primary = Path(settings.db_path)
+        try:
+            primary.parent.mkdir(parents=True, exist_ok=True)
+            # Quick probe: can SQLite actually open a connection here?
+            conn = sqlite3.connect(primary)
+            conn.close()
+            return primary
+        except Exception as exc:
+            fallback = Path("/tmp/telegram_ai_fallback.sqlite3")
+            logger.warning(
+                "DB path %s not usable (%s) — falling back to %s",
+                primary, exc, fallback,
+            )
+            return fallback
 
     def _connect(self) -> sqlite3.Connection:
         return sqlite3.connect(self._db_path)
