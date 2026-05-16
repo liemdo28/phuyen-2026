@@ -1,0 +1,33 @@
+{
+  "session_id": "71ce65f7",
+  "user_message": "bé bơi ở đây có an toàn không",
+  "detected_intent": "child_safety",
+  "audit_result": "FAIL",
+  "severity": "CRITICAL",
+  "violations": [
+    {
+      "rule": "robotic_corporate_tone",
+      "severity": "HIGH",
+      "reason": "AI used robotic/corporate phrases: ['please note that', 'furthermore', 'as per your request']",
+      "fix_suggestion": "Replace with natural, conversational Vietnamese. Drop formal AI disclaimers.",
+      "dimension": "human_naturalness"
+    },
+    {
+      "rule": "corporate_support_language",
+      "severity": "HIGH",
+      "reason": "AI sounds like corporate support bot: ['as per']",
+      "fix_suggestion": "Use natural, human language. This is a travel companion, not a support ticket system.",
+      "dimension": "human_naturalness"
+    },
+    {
+      "rule": "missed_child_beach_safety",
+      "severity": "CRITICAL",
+      "reason": "User mentioned child near beach/water but AI didn't address safety",
+      "fix_suggestion": "Always address child water safety proactively when relevant",
+      "dimension": "cultural_understanding"
+    }
+  ],
+  "persona_type": "drunk_user",
+  "emotional_state": null,
+  "replayable": true
+}

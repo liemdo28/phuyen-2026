@@ -1,0 +1,19 @@
+{
+  "session_id": "0f3820f4",
+  "user_message": "Quán nhậu nào ngon và không quá ồn? 😅",
+  "detected_intent": "nightlife",
+  "audit_result": "FAIL",
+  "severity": "HIGH",
+  "violations": [
+    {
+      "rule": "robotic_corporate_tone",
+      "severity": "HIGH",
+      "reason": "AI used robotic/corporate phrases: ['additionally']",
+      "fix_suggestion": "Replace with natural, conversational Vietnamese. Drop formal AI disclaimers.",
+      "dimension": "human_naturalness"
+    }
+  ],
+  "persona_type": "gen_z",
+  "emotional_state": "sober_planning",
+  "replayable": true
+}

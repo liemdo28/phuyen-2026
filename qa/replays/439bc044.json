@@ -1,0 +1,19 @@
+{
+  "session_id": "439bc044",
+  "user_message": "500k | hai san | trua",
+  "detected_intent": "fragmented_order",
+  "audit_result": "PASS",
+  "severity": "LOW",
+  "violations": [
+    {
+      "rule": "missed_budget_context",
+      "severity": "HIGH",
+      "reason": "User specified budget 500000đ but AI ignored it",
+      "fix_suggestion": "Merge all message fragments into one coherent intent before responding",
+      "dimension": "context_understanding"
+    }
+  ],
+  "persona_type": "stressed_traveler",
+  "emotional_state": null,
+  "replayable": true
+}

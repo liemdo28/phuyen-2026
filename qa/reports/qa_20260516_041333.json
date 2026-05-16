@@ -1,0 +1,171 @@
+{
+  "run_id": "qa_20260516_041333",
+  "timestamp": "2026-05-16T04:13:33.009876",
+  "summary": {
+    "total_sessions": 21,
+    "pass_count": 13,
+    "fail_count": 8,
+    "pass_rate": 61.9,
+    "overall_score": 9.65,
+    "grade": "S",
+    "zero_audit_achieved": false
+  },
+  "dimension_averages": {
+    "human_naturalness": 8.0,
+    "slang_understanding": 10.0,
+    "emotional_awareness": 10.0,
+    "travel_orchestration": 10.0,
+    "fatigue_awareness": 10.0,
+    "cultural_understanding": 9.36,
+    "hallucination_risk_score": 10.0,
+    "recommendation_quality": 10.0,
+    "conversation_continuity": 10.0
+  },
+  "worst_dimensions": [
+    "human_naturalness",
+    "cultural_understanding",
+    "slang_understanding"
+  ],
+  "improvement_targets": [
+    "🚨 CRITICAL: 2 critical violations must be fixed first"
+  ],
+  "regression_status": "REGRESSION_RISK",
+  "critical_violations": [
+    {
+      "session_id": "71ce65f7",
+      "rule": "missed_child_beach_safety",
+      "message": "bé bơi ở đây có an toàn không",
+      "reason": "User mentioned child near beach/water but AI didn't address safety",
+      "fix": "Always address child water safety proactively when relevant"
+    },
+    {
+      "session_id": "b138c26c",
+      "rule": "missed_child_beach_safety",
+      "message": "cho bé ra biển có sứa không",
+      "reason": "User mentioned child near beach/water but AI didn't address safety",
+      "fix": "Always address child water safety proactively when relevant"
+    }
+  ],
+  "dev_fix_queue": [
+    {
+      "priority": 1,
+      "session_id": "71ce65f7",
+      "rule": "missed_child_beach_safety",
+      "severity": "CRITICAL",
+      "user_message": "bé bơi ở đây có an toàn không",
+      "reason": "User mentioned child near beach/water but AI didn't address safety",
+      "fix_suggestion": "Always address child water safety proactively when relevant",
+      "dimension": "cultural_understanding",
+      "replayable": true,
+      "status": "open"
+    },
+    {
+      "priority": 2,
+      "session_id": "0a727cee",
+      "rule": "robotic_corporate_tone",
+      "severity": "HIGH",
+      "user_message": "trời mưa rồi kế hoạch hủy hết giờ đi đâu với bé",
+      "reason": "AI used robotic/corporate phrases: ['please note that', 'furthermore', 'as per your request']",
+      "fix_suggestion": "Replace with natural, conversational Vietnamese. Drop formal AI disclaimers.",
+      "dimension": "human_naturalness",
+      "replayable": true,
+      "status": "open"
+    },
+    {
+      "priority": 2,
+      "session_id": "0a727cee",
+      "rule": "corporate_support_language",
+      "severity": "HIGH",
+      "user_message": "trời mưa rồi kế hoạch hủy hết giờ đi đâu với bé",
+      "reason": "AI sounds like corporate support bot: ['as per']",
+      "fix_suggestion": "Use natural, human language. This is a travel companion, not a support ticket system.",
+      "dimension": "human_naturalness",
+      "replayable": true,
+      "status": "open"
+    },
+    {
+      "priority": 2,
+      "session_id": "0a727cee",
+      "rule": "missed_weather_intent",
+      "severity": "HIGH",
+      "user_message": "trời mưa rồi kế hoạch hủy hết giờ đi đâu với bé",
+      "reason": "User asking about weather but AI didn't provide weather info",
+      "fix_suggestion": "Detect weather intent and provide weather information directly",
+      "dimension": "intent_understanding",
+      "replayable": true,
+      "status": "open"
+    },
+    {
+      "priority": 2,
+      "session_id": "0a727cee",
+      "rule": "response_too_long_for_fatigue_level",
+      "severity": "HIGH",
+      "user_message": "trời mưa rồi kế hoạch hủy hết giờ đi đâu với bé",
+      "reason": "Fatigue level completely_done: max 100 chars, got 129",
+      "fix_suggestion": "Adjust response for user's fatigue level",
+      "dimension": "emotional_awareness",
+      "replayable": true,
+      "status": "open"
+    },
+    {
+      "priority": 2,
+      "session_id": "c3bfe868",
+      "rule": "missed_food_intent",
+      "severity": "HIGH",
+      "user_message": "xe sắp hết xăng",
+      "reason": "User asking about food but AI didn't provide food recommendations",
+      "fix_suggestion": "Detect food intent and provide food information directly",
+      "dimension": "intent_understanding",
+      "replayable": true,
+      "status": "open"
+    },
+    {
+      "priority": 2,
+      "session_id": "c3bfe868",
+      "rule": "language_mismatch",
+      "severity": "HIGH",
+      "user_message": "xe sắp hết xăng",
+      "reason": "User wrote in Vietnamese but AI responded in English",
+      "fix_suggestion": "Always respond in the same language as the user",
+      "dimension": "cultural_understanding",
+      "replayable": true,
+      "status": "open"
+    },
+    {
+      "priority": 2,
+      "session_id": "3b28b9fe",
+      "rule": "ambitious_suggestion_for_exhausted_user",
+      "severity": "HIGH",
+      "user_message": "mệt rồi đi đâu nghỉ đi",
+      "reason": "AI suggested sightseeing to exhausted user",
+      "fix_suggestion": "Adjust response for user's fatigue level",
+      "dimension": "emotional_awareness",
+      "replayable": true,
+      "status": "open"
+    },
+    {
+      "priority": 3,
+      "session_id": "9c74784a",
+      "rule": "no_empathy_for_sarcastic_user",
+      "severity": "MEDIUM",
+      "user_message": "Bình thường thôi, chỉ bị chặt chém 200k có vậy",
+      "reason": "AI didn't show empathy when user was being sarcastic (disguised complaint)",
+      "fix_suggestion": "Detect sarcasm and respond to underlying intent",
+      "dimension": "emotional_awareness",
+      "replayable": true,
+      "status": "open"
+    },
+    {
+      "priority": 3,
+      "session_id": "0a727cee",
+      "rule": "no_rest_suggestion_when_needed",
+      "severity": "MEDIUM",
+      "user_message": "trời mưa rồi kế hoạch hủy hết giờ đi đâu với bé",
+      "reason": "User needs rest but AI didn't suggest it",
+      "fix_suggestion": "Adjust response for user's fatigue level",
+      "dimension": "emotional_awareness",
+      "replayable": true,
+      "status": "open"
+    }
+  ]
+}

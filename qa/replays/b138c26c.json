@@ -1,0 +1,19 @@
+{
+  "session_id": "b138c26c",
+  "user_message": "cho bé ra biển có sứa không",
+  "detected_intent": "child_safety",
+  "audit_result": "FAIL",
+  "severity": "CRITICAL",
+  "violations": [
+    {
+      "rule": "missed_child_beach_safety",
+      "severity": "CRITICAL",
+      "reason": "User mentioned child near beach/water but AI didn't address safety",
+      "fix_suggestion": "Always address child water safety proactively when relevant",
+      "dimension": "cultural_understanding"
+    }
+  ],
+  "persona_type": "exhausted_traveler",
+  "emotional_state": null,
+  "replayable": true
+}

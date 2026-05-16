@@ -1,0 +1,33 @@
+{
+  "session_id": "f0e520c8",
+  "user_message": "trời mưa rồi kế hoạch hủy hết giờ đi đâu với bé",
+  "detected_intent": "emotional_exhaustion",
+  "audit_result": "FAIL",
+  "severity": "HIGH",
+  "violations": [
+    {
+      "rule": "robotic_corporate_tone",
+      "severity": "HIGH",
+      "reason": "AI used robotic/corporate phrases: ['please note that', 'furthermore', 'as per your request']",
+      "fix_suggestion": "Replace with natural, conversational Vietnamese. Drop formal AI disclaimers.",
+      "dimension": "human_naturalness"
+    },
+    {
+      "rule": "corporate_support_language",
+      "severity": "HIGH",
+      "reason": "AI sounds like corporate support bot: ['as per']",
+      "fix_suggestion": "Use natural, human language. This is a travel companion, not a support ticket system.",
+      "dimension": "human_naturalness"
+    },
+    {
+      "rule": "missed_weather_intent",
+      "severity": "HIGH",
+      "reason": "User asking about weather but AI didn't provide weather info",
+      "fix_suggestion": "Detect weather intent and provide weather information directly",
+      "dimension": "intent_understanding"
+    }
+  ],
+  "persona_type": "confused_tourist",
+  "emotional_state": "stressed",
+  "replayable": true
+}

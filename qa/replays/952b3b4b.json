@@ -1,0 +1,33 @@
+{
+  "session_id": "952b3b4b",
+  "user_message": "thay đổi kế hoạch rồi",
+  "detected_intent": "travel_chaos",
+  "audit_result": "FAIL",
+  "severity": "HIGH",
+  "violations": [
+    {
+      "rule": "robotic_corporate_tone",
+      "severity": "HIGH",
+      "reason": "AI used robotic/corporate phrases: ['i am an ai', 'i cannot provide', 'please note that']",
+      "fix_suggestion": "Replace with natural, conversational Vietnamese. Drop formal AI disclaimers.",
+      "dimension": "human_naturalness"
+    },
+    {
+      "rule": "corporate_support_language",
+      "severity": "HIGH",
+      "reason": "AI sounds like corporate support bot: ['as per']",
+      "fix_suggestion": "Use natural, human language. This is a travel companion, not a support ticket system.",
+      "dimension": "human_naturalness"
+    },
+    {
+      "rule": "language_mismatch",
+      "severity": "HIGH",
+      "reason": "User wrote in Vietnamese but AI responded in English",
+      "fix_suggestion": "Always respond in the same language as the user",
+      "dimension": "cultural_understanding"
+    }
+  ],
+  "persona_type": "tourist_foreign",
+  "emotional_state": null,
+  "replayable": true
+}
