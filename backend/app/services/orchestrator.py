@@ -230,6 +230,34 @@ class TelegramOrchestrator:
                     )
                 return
 
+            # FAST PATH: Greeting — short warm reply, never touches LLM
+            _GREETING_PATTERNS = (
+                "chào em", "chao em", "chào bạn", "chao ban",
+                "xin chào", "xin chao",
+                "hello mi", "hi mi", "chào mi", "chao mi",
+                "hey mi", "hey bạn", "alo mi", "alo bạn",
+            )
+            if any(p in _t_lower for p in _GREETING_PATTERNS) and len(_t_lower) < 40:
+                _greet_reply = "Chào bạn 😊 Mình là Mi — bạn đồng hành Phú Yên của nhóm. Hỏi gì cũng được nhé!"
+                if decision.allow_reply:
+                    await self.telegram.send_message(chat.id, _greet_reply)
+                return
+
+            # FAST PATH: Name / identity query — Mi always knows her own name
+            _NAME_PATTERNS = (
+                "em tên gì", "ten em la gi", "tên bạn là gì", "ban ten gi",
+                "bạn tên gì", "mi tên gì", "mi la ai", "mi là ai",
+                "bạn là ai", "ban la ai", "em là ai", "em la ai",
+                "mày là ai", "may la ai", "ten la gi", "tên là gì",
+                "bạn là gì", "ban la gi", "ai vậy", "ai vay",
+                "bạn tên", "ban ten", "em tên", "em ten",
+            )
+            if any(p in _t_lower for p in _NAME_PATTERNS):
+                _name_reply = "Mình là Mi 😊 Bạn đồng hành chuyến Phú Yên của nhóm — hỏi gì cứ hỏi nhé!"
+                if decision.allow_reply:
+                    await self.telegram.send_message(chat.id, _name_reply)
+                return
+
             # FAST PATH: deterministic shortcuts (sheet link, maps) — must run
             # before the heavy LLM/Brain/Society stack so they can't be eaten by
             # upstream failures.
