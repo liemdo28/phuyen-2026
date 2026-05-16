@@ -1,0 +1,40 @@
+{
+  "session_id": "7df63ead",
+  "user_message": "ez ez ăn gì đỉnh đỉnh thôi",
+  "detected_intent": "slang_casual",
+  "audit_result": "FAIL",
+  "severity": "HIGH",
+  "violations": [
+    {
+      "rule": "robotic_corporate_tone",
+      "severity": "HIGH",
+      "reason": "AI used robotic/corporate phrases: ['i am an ai', 'i cannot provide', 'please note that']",
+      "fix_suggestion": "Replace with natural, conversational Vietnamese. Drop formal AI disclaimers.",
+      "dimension": "human_naturalness"
+    },
+    {
+      "rule": "corporate_support_language",
+      "severity": "HIGH",
+      "reason": "AI sounds like corporate support bot: ['as per']",
+      "fix_suggestion": "Use natural, human language. This is a travel companion, not a support ticket system.",
+      "dimension": "human_naturalness"
+    },
+    {
+      "rule": "missed_food_intent",
+      "severity": "HIGH",
+      "reason": "User asking about food but AI didn't provide food recommendations",
+      "fix_suggestion": "Detect food intent and provide food information directly",
+      "dimension": "intent_understanding"
+    },
+    {
+      "rule": "language_mismatch",
+      "severity": "HIGH",
+      "reason": "User wrote in Vietnamese but AI responded in English",
+      "fix_suggestion": "Always respond in the same language as the user",
+      "dimension": "cultural_understanding"
+    }
+  ],
+  "persona_type": "passive_aggressive",
+  "emotional_state": null,
+  "replayable": true
+}

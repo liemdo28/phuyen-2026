@@ -1,0 +1,26 @@
+{
+  "session_id": "6611a879",
+  "user_message": "shot đi mọi người 🥂 🎉",
+  "detected_intent": "nightlife",
+  "audit_result": "FAIL",
+  "severity": "HIGH",
+  "violations": [
+    {
+      "rule": "robotic_corporate_tone",
+      "severity": "HIGH",
+      "reason": "AI used robotic/corporate phrases: ['please note that', 'furthermore,', 'as per your request']",
+      "fix_suggestion": "Replace with natural, conversational Vietnamese. Drop formal AI disclaimers.",
+      "dimension": "human_naturalness"
+    },
+    {
+      "rule": "corporate_support_language",
+      "severity": "HIGH",
+      "reason": "AI sounds like corporate support bot: ['as per']",
+      "fix_suggestion": "Use natural, human language. This is a travel companion, not a support ticket system.",
+      "dimension": "human_naturalness"
+    }
+  ],
+  "persona_type": "angry_customer",
+  "emotional_state": "tipsy",
+  "replayable": true
+}

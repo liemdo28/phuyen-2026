@@ -1,0 +1,19 @@
+{
+  "session_id": "a201c48c",
+  "user_message": "chỗ nào ít người hơn",
+  "detected_intent": "travel_chaos",
+  "audit_result": "FAIL",
+  "severity": "HIGH",
+  "violations": [
+    {
+      "rule": "missed_location_intent",
+      "severity": "HIGH",
+      "reason": "User asking for directions/location but AI didn't provide navigation help",
+      "fix_suggestion": "Detect location intent and provide location information directly",
+      "dimension": "intent_understanding"
+    }
+  ],
+  "persona_type": "gen_z",
+  "emotional_state": null,
+  "replayable": true
+}

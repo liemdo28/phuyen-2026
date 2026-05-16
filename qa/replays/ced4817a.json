@@ -1,0 +1,26 @@
+{
+  "session_id": "ced4817a",
+  "user_message": "toi muon | di Ganh Da Dia | co phai di xa khong",
+  "detected_intent": "fragmented_order",
+  "audit_result": "FAIL",
+  "severity": "HIGH",
+  "violations": [
+    {
+      "rule": "robotic_corporate_tone",
+      "severity": "HIGH",
+      "reason": "AI used robotic/corporate phrases: ['i am an ai', 'i cannot provide', 'please note that']",
+      "fix_suggestion": "Replace with natural, conversational Vietnamese. Drop formal AI disclaimers.",
+      "dimension": "human_naturalness"
+    },
+    {
+      "rule": "corporate_support_language",
+      "severity": "HIGH",
+      "reason": "AI sounds like corporate support bot: ['as per']",
+      "fix_suggestion": "Use natural, human language. This is a travel companion, not a support ticket system.",
+      "dimension": "human_naturalness"
+    }
+  ],
+  "persona_type": "stressed_traveler",
+  "emotional_state": null,
+  "replayable": true
+}

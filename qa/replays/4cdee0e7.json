@@ -1,0 +1,33 @@
+{
+  "session_id": "4cdee0e7",
+  "user_message": "chỗ nào ít người hơn",
+  "detected_intent": "travel_chaos",
+  "audit_result": "FAIL",
+  "severity": "HIGH",
+  "violations": [
+    {
+      "rule": "robotic_corporate_tone",
+      "severity": "HIGH",
+      "reason": "AI used robotic/corporate phrases: ['please note that', 'furthermore', 'as per your request']",
+      "fix_suggestion": "Replace with natural, conversational Vietnamese. Drop formal AI disclaimers.",
+      "dimension": "human_naturalness"
+    },
+    {
+      "rule": "corporate_support_language",
+      "severity": "HIGH",
+      "reason": "AI sounds like corporate support bot: ['as per']",
+      "fix_suggestion": "Use natural, human language. This is a travel companion, not a support ticket system.",
+      "dimension": "human_naturalness"
+    },
+    {
+      "rule": "missed_location_intent",
+      "severity": "HIGH",
+      "reason": "User asking for directions/location but AI didn't provide navigation help",
+      "fix_suggestion": "Detect location intent and provide location information directly",
+      "dimension": "intent_understanding"
+    }
+  ],
+  "persona_type": "gen_z",
+  "emotional_state": null,
+  "replayable": true
+}

@@ -1,0 +1,33 @@
+{
+  "session_id": "0c2a672e",
+  "user_message": "trời mưa rồi kế hoạch hủy hết giờ đi đâu với bé",
+  "detected_intent": "emotional_exhaustion",
+  "audit_result": "FAIL",
+  "severity": "HIGH",
+  "violations": [
+    {
+      "rule": "missed_weather_intent",
+      "severity": "HIGH",
+      "reason": "User asking about weather but AI didn't provide weather info",
+      "fix_suggestion": "Detect weather intent and provide weather information directly",
+      "dimension": "intent_understanding"
+    },
+    {
+      "rule": "response_too_long_for_fatigue_level",
+      "severity": "HIGH",
+      "reason": "Fatigue level completely_done: max 100 chars, got 141",
+      "fix_suggestion": "Adjust response for user's fatigue level",
+      "dimension": "emotional_awareness"
+    },
+    {
+      "rule": "no_rest_suggestion_when_needed",
+      "severity": "MEDIUM",
+      "reason": "User needs rest but AI didn't suggest it",
+      "fix_suggestion": "Adjust response for user's fatigue level",
+      "dimension": "emotional_awareness"
+    }
+  ],
+  "persona_type": "gen_z",
+  "emotional_state": "stressed",
+  "replayable": true
+}

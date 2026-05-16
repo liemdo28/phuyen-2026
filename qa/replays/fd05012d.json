@@ -1,0 +1,19 @@
+{
+  "session_id": "fd05012d",
+  "user_message": "muon an | hai san tuoi | gan day thoi",
+  "detected_intent": "fragmented_order",
+  "audit_result": "WARNING",
+  "severity": "MEDIUM",
+  "violations": [
+    {
+      "rule": "choice_overload",
+      "severity": "MEDIUM",
+      "reason": "AI listed 15 options — too many choices overwhelm users",
+      "fix_suggestion": "Limit to 2-3 best options. Make a recommendation instead of listing everything.",
+      "dimension": "recommendation_quality"
+    }
+  ],
+  "persona_type": "confused_tourist",
+  "emotional_state": null,
+  "replayable": true
+}

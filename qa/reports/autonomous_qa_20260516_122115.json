@@ -1,0 +1,108 @@
+{
+  "run_id": "autonomous_qa_20260516_122115",
+  "timestamp": "2026-05-16T12:21:15.323018",
+  "summary": {
+    "total_sessions": 10,
+    "pass_count": 7,
+    "fail_count": 3,
+    "pass_rate": 70.0,
+    "overall_score": 9.73,
+    "grade": "S",
+    "zero_audit_achieved": false
+  },
+  "dimension_averages": {
+    "human_naturalness": 8.95,
+    "slang_understanding": 10.0,
+    "emotional_awareness": 10.0,
+    "travel_orchestration": 9.81,
+    "fatigue_awareness": 10.0,
+    "cultural_understanding": 9.65,
+    "hallucination_risk_score": 10.0,
+    "recommendation_quality": 9.45,
+    "conversation_continuity": 10.0
+  },
+  "worst_dimensions": [
+    "human_naturalness",
+    "recommendation_quality",
+    "cultural_understanding"
+  ],
+  "improvement_targets": [
+    "✅ All dimensions above threshold — focus on edge cases"
+  ],
+  "regression_status": "STABLE",
+  "critical_violations": [],
+  "dev_fix_queue": [
+    {
+      "priority": 2,
+      "session_id": "01031630",
+      "rule": "robotic_corporate_tone",
+      "severity": "HIGH",
+      "user_message": "k biet duong di ganh da dia",
+      "reason": "AI used robotic/corporate phrases: ['i am an ai', 'i cannot provide', 'please note that']",
+      "fix_suggestion": "Replace with natural, conversational Vietnamese. Drop formal AI disclaimers.",
+      "dimension": "human_naturalness",
+      "replayable": true,
+      "status": "open"
+    },
+    {
+      "priority": 2,
+      "session_id": "01031630",
+      "rule": "corporate_support_language",
+      "severity": "HIGH",
+      "user_message": "k biet duong di ganh da dia",
+      "reason": "AI sounds like corporate support bot: ['as per']",
+      "fix_suggestion": "Use natural, human language. This is a travel companion, not a support ticket system.",
+      "dimension": "human_naturalness",
+      "replayable": true,
+      "status": "open"
+    },
+    {
+      "priority": 2,
+      "session_id": "02507eaf",
+      "rule": "unhelpful_non_answer",
+      "severity": "HIGH",
+      "user_message": "ai biết bar nào không 🍻",
+      "reason": "AI admitted it doesn't know without attempting to help",
+      "fix_suggestion": "Always try to give partial help or refer to a reliable source",
+      "dimension": "recommendation_quality",
+      "replayable": true,
+      "status": "open"
+    },
+    {
+      "priority": 2,
+      "session_id": "02507eaf",
+      "rule": "language_mismatch",
+      "severity": "HIGH",
+      "user_message": "ai biết bar nào không 🍻",
+      "reason": "User wrote in Vietnamese but AI responded in English",
+      "fix_suggestion": "Always respond in the same language as the user",
+      "dimension": "cultural_understanding",
+      "replayable": true,
+      "status": "open"
+    },
+    {
+      "priority": 2,
+      "session_id": "0273b1ae",
+      "rule": "missed_weather_intent",
+      "severity": "HIGH",
+      "user_message": "trời mưa rồi kế hoạch hủy hết giờ đi đâu với bé",
+      "reason": "User mentioned rain/weather but AI didn't acknowledge weather or suggest alternatives",
+      "fix_suggestion": "Detect weather intent and provide weather information directly",
+      "dimension": "intent_understanding",
+      "replayable": true,
+      "status": "open"
+    },
+    {
+      "priority": 3,
+      "session_id": "03b66b1c",
+      "rule": "choice_overload",
+      "severity": "MEDIUM",
+      "user_message": "mệt rồi đi đâu nghỉ đi",
+      "reason": "AI listed 15 options — too many choices overwhelm users",
+      "fix_suggestion": "Limit to 2-3 best options. Make a recommendation instead of listing everything.",
+      "dimension": "recommendation_quality",
+      "replayable": true,
+      "status": "open"
+    }
+  ]
+}

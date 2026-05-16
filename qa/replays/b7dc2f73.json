@@ -1,0 +1,26 @@
+{
+  "session_id": "b7dc2f73",
+  "user_message": "500k | hai san | trua",
+  "detected_intent": "fragmented_order",
+  "audit_result": "FAIL",
+  "severity": "HIGH",
+  "violations": [
+    {
+      "rule": "robotic_corporate_tone",
+      "severity": "HIGH",
+      "reason": "AI used robotic/corporate phrases: ['as an ai', 'i hope this helps', 'feel free to ask']",
+      "fix_suggestion": "Replace with natural, conversational Vietnamese. Drop formal AI disclaimers.",
+      "dimension": "human_naturalness"
+    },
+    {
+      "rule": "missed_budget_context",
+      "severity": "HIGH",
+      "reason": "User specified budget 500000đ but AI ignored it",
+      "fix_suggestion": "Merge all message fragments into one coherent intent before responding",
+      "dimension": "context_understanding"
+    }
+  ],
+  "persona_type": "tourist_domestic",
+  "emotional_state": null,
+  "replayable": true
+}

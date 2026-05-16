@@ -1,0 +1,30 @@
+{
+  "run_id": "autonomous_qa_20260516_123413",
+  "generated_at": "2026-05-16T12:34:13.200593",
+  "summary": {
+    "generated_at": "2026-05-16T12:34:13.200593",
+    "session_count": 10,
+    "violation_count": 2,
+    "pass_count": 9,
+    "fail_count": 1,
+    "zero_audit_achieved": false
+  },
+  "dev_fix_queue": [
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "ModuleNotFoundError: No module named 'qa.orchestration.qa_orchestrator'",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    },
+    {
+      "rule": "missed_food_need",
+      "severity": "HIGH",
+      "user_message": "ModuleNotFoundError: No module named 'qa.orchestration.qa_orchestrator'",
+      "reason": "User đang hỏi ăn/uống nhưng response không đưa hướng xử lý phù hợp.",
+      "fix_suggestion": "Ưu tiên gợi ý ăn/uống gần, ít lựa chọn, dễ đi.",
+      "replayable": true
+    }
+  ]
+}

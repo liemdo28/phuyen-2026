@@ -1,0 +1,26 @@
+{
+  "session_id": "f8eab34a",
+  "user_message": "bé có tắm được không",
+  "detected_intent": "travel_chaos",
+  "audit_result": "FAIL",
+  "severity": "CRITICAL",
+  "violations": [
+    {
+      "rule": "choice_overload",
+      "severity": "MEDIUM",
+      "reason": "AI listed 15 options — too many choices overwhelm users",
+      "fix_suggestion": "Limit to 2-3 best options. Make a recommendation instead of listing everything.",
+      "dimension": "recommendation_quality"
+    },
+    {
+      "rule": "missed_child_beach_safety",
+      "severity": "CRITICAL",
+      "reason": "User mentioned child near beach/water but AI didn't address safety",
+      "fix_suggestion": "Always address child water safety proactively when relevant",
+      "dimension": "cultural_understanding"
+    }
+  ],
+  "persona_type": "confused_tourist",
+  "emotional_state": null,
+  "replayable": true
+}

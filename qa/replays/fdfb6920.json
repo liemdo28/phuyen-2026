@@ -1,0 +1,19 @@
+{
+  "session_id": "fdfb6920",
+  "user_message": "bé bơi ở đây có an toàn không",
+  "detected_intent": "child_safety",
+  "audit_result": "FAIL",
+  "severity": "CRITICAL",
+  "violations": [
+    {
+      "rule": "missed_child_beach_safety",
+      "severity": "CRITICAL",
+      "reason": "User mentioned child near beach/water but AI didn't address safety",
+      "fix_suggestion": "Always address child water safety proactively when relevant",
+      "dimension": "cultural_understanding"
+    }
+  ],
+  "persona_type": "tourist_domestic",
+  "emotional_state": null,
+  "replayable": true
+}

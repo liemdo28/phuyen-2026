@@ -1,0 +1,40 @@
+{
+  "session_id": "be84c3ab",
+  "user_message": "mệt rồi đi đâu nghỉ đi",
+  "detected_intent": "emotional_exhaustion",
+  "audit_result": "FAIL",
+  "severity": "HIGH",
+  "violations": [
+    {
+      "rule": "robotic_corporate_tone",
+      "severity": "HIGH",
+      "reason": "AI used robotic/corporate phrases: ['as an ai', 'i hope this helps', 'feel free to ask']",
+      "fix_suggestion": "Replace with natural, conversational Vietnamese. Drop formal AI disclaimers.",
+      "dimension": "human_naturalness"
+    },
+    {
+      "rule": "language_mismatch",
+      "severity": "HIGH",
+      "reason": "User wrote in Vietnamese but AI responded in English",
+      "fix_suggestion": "Always respond in the same language as the user",
+      "dimension": "cultural_understanding"
+    },
+    {
+      "rule": "response_too_long_for_fatigue_level",
+      "severity": "HIGH",
+      "reason": "Fatigue level completely_done: max 100 chars, got 171",
+      "fix_suggestion": "Adjust response for user's fatigue level",
+      "dimension": "emotional_awareness"
+    },
+    {
+      "rule": "no_rest_suggestion_when_needed",
+      "severity": "MEDIUM",
+      "reason": "User needs rest but AI didn't suggest it",
+      "fix_suggestion": "Adjust response for user's fatigue level",
+      "dimension": "emotional_awareness"
+    }
+  ],
+  "persona_type": "tourist_domestic",
+  "emotional_state": "nightlife_energy",
+  "replayable": true
+}

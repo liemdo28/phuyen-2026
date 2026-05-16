@@ -1,0 +1,26 @@
+{
+  "session_id": "a18ecc78",
+  "user_message": "bé bơi ở đây có an toàn không",
+  "detected_intent": "child_safety",
+  "audit_result": "FAIL",
+  "severity": "CRITICAL",
+  "violations": [
+    {
+      "rule": "choice_overload",
+      "severity": "MEDIUM",
+      "reason": "AI listed 15 options — too many choices overwhelm users",
+      "fix_suggestion": "Limit to 2-3 best options. Make a recommendation instead of listing everything.",
+      "dimension": "recommendation_quality"
+    },
+    {
+      "rule": "missed_child_beach_safety",
+      "severity": "CRITICAL",
+      "reason": "User mentioned child near beach/water but AI didn't address safety",
+      "fix_suggestion": "Always address child water safety proactively when relevant",
+      "dimension": "cultural_understanding"
+    }
+  ],
+  "persona_type": "gen_z",
+  "emotional_state": null,
+  "replayable": true
+}

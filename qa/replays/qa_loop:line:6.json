@@ -1,0 +1,16 @@
+{
+  "session_id": "qa_loop:line:6",
+  "user_message": "File \"/Users/liemdo/phuyen-2026/qa/run_qa.py\", line 296, in main",
+  "ai_response": "I don't know the answer to that. Please contact support for more information.",
+  "audit_result": "FAIL",
+  "violations": [
+    {
+      "rule": "robotic_response",
+      "dimension": "human_naturalness",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "severity": "HIGH"
+    }
+  ],
+  "replayable": true
+}

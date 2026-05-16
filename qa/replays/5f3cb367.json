@@ -1,0 +1,33 @@
+{
+  "session_id": "5f3cb367",
+  "user_message": "Chỗ nào phù hợp cho nhóm 7 người? 🎉",
+  "detected_intent": "nightlife",
+  "audit_result": "FAIL",
+  "severity": "HIGH",
+  "violations": [
+    {
+      "rule": "robotic_corporate_tone",
+      "severity": "HIGH",
+      "reason": "AI used robotic/corporate phrases: ['please note that', 'furthermore', 'as per your request']",
+      "fix_suggestion": "Replace with natural, conversational Vietnamese. Drop formal AI disclaimers.",
+      "dimension": "human_naturalness"
+    },
+    {
+      "rule": "corporate_support_language",
+      "severity": "HIGH",
+      "reason": "AI sounds like corporate support bot: ['as per']",
+      "fix_suggestion": "Use natural, human language. This is a travel companion, not a support ticket system.",
+      "dimension": "human_naturalness"
+    },
+    {
+      "rule": "missed_location_intent",
+      "severity": "HIGH",
+      "reason": "User asking for directions/location but AI didn't provide navigation help",
+      "fix_suggestion": "Detect location intent and provide location information directly",
+      "dimension": "intent_understanding"
+    }
+  ],
+  "persona_type": "meme_user",
+  "emotional_state": "sober_planning",
+  "replayable": true
+}

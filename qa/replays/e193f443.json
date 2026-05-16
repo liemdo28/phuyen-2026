@@ -1,0 +1,26 @@
+{
+  "session_id": "e193f443",
+  "user_message": "Bình thường thôi, chỉ bị chặt chém 200k có vậy",
+  "detected_intent": "sarcasm",
+  "audit_result": "WARNING",
+  "severity": "MEDIUM",
+  "violations": [
+    {
+      "rule": "choice_overload",
+      "severity": "MEDIUM",
+      "reason": "AI listed 15 options — too many choices overwhelm users",
+      "fix_suggestion": "Limit to 2-3 best options. Make a recommendation instead of listing everything.",
+      "dimension": "recommendation_quality"
+    },
+    {
+      "rule": "no_empathy_for_sarcastic_user",
+      "severity": "MEDIUM",
+      "reason": "AI didn't show empathy when user was being sarcastic (disguised complaint)",
+      "fix_suggestion": "Detect sarcasm and respond to underlying intent",
+      "dimension": "emotional_awareness"
+    }
+  ],
+  "persona_type": "hungry_traveler",
+  "emotional_state": null,
+  "replayable": true
+}

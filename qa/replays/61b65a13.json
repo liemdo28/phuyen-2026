@@ -1,0 +1,19 @@
+{
+  "session_id": "61b65a13",
+  "user_message": "mệt rồi đi đâu nghỉ đi",
+  "detected_intent": "emotional_exhaustion",
+  "audit_result": "FAIL",
+  "severity": "HIGH",
+  "violations": [
+    {
+      "rule": "response_too_long_for_fatigue_level",
+      "severity": "HIGH",
+      "reason": "Fatigue level completely_done: max 100 chars, got 185",
+      "fix_suggestion": "Adjust response for user's fatigue level",
+      "dimension": "emotional_awareness"
+    }
+  ],
+  "persona_type": "local_user",
+  "emotional_state": "confused",
+  "replayable": true
+}

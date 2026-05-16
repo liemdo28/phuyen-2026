@@ -1,0 +1,19 @@
+{
+  "session_id": "40af9fbb",
+  "user_message": "chỗ này oke đấy nhỉ haha",
+  "detected_intent": "nightlife",
+  "audit_result": "WARNING",
+  "severity": "MEDIUM",
+  "violations": [
+    {
+      "rule": "choice_overload",
+      "severity": "MEDIUM",
+      "reason": "AI listed 15 options — too many choices overwhelm users",
+      "fix_suggestion": "Limit to 2-3 best options. Make a recommendation instead of listing everything.",
+      "dimension": "recommendation_quality"
+    }
+  ],
+  "persona_type": "gen_z",
+  "emotional_state": "tipsy",
+  "replayable": true
+}

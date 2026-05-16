@@ -1,0 +1,26 @@
+{
+  "session_id": "c5d315a1",
+  "user_message": "Ừ đúng rồi, quán đó tuyệt vời lắm 🙄",
+  "detected_intent": "sarcasm",
+  "audit_result": "FAIL",
+  "severity": "HIGH",
+  "violations": [
+    {
+      "rule": "robotic_corporate_tone",
+      "severity": "HIGH",
+      "reason": "AI used robotic/corporate phrases: ['additionally']",
+      "fix_suggestion": "Replace with natural, conversational Vietnamese. Drop formal AI disclaimers.",
+      "dimension": "human_naturalness"
+    },
+    {
+      "rule": "no_empathy_for_sarcastic_user",
+      "severity": "MEDIUM",
+      "reason": "AI didn't show empathy when user was being sarcastic (disguised complaint)",
+      "fix_suggestion": "Detect sarcasm and respond to underlying intent",
+      "dimension": "emotional_awareness"
+    }
+  ],
+  "persona_type": "tourist_domestic",
+  "emotional_state": null,
+  "replayable": true
+}

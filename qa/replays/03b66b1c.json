@@ -1,0 +1,16 @@
+{
+  "session_id": "03b66b1c",
+  "user_message": "mệt rồi đi đâu nghỉ đi",
+  "ai_response": "[HTTP 404]",
+  "audit_result": "FAIL",
+  "violations": [
+    {
+      "rule": "missed_location_guidance",
+      "dimension": "routing_quality",
+      "reason": "Query có yếu tố vị trí nhưng response không điều hướng theo địa điểm.",
+      "fix_suggestion": "Xin vị trí hoặc địa điểm cụ thể khi thiếu geolocation.",
+      "severity": "MEDIUM"
+    }
+  ],
+  "replayable": true
+}

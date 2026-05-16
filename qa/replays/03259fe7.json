@@ -1,0 +1,16 @@
+{
+  "session_id": "03259fe7",
+  "user_message": "500k | hai san | trua",
+  "ai_response": "[HTTP 404]",
+  "audit_result": "FAIL",
+  "violations": [
+    {
+      "rule": "missed_food_need",
+      "dimension": "travel_suitability",
+      "reason": "User đang hỏi ăn/uống nhưng response không đưa hướng xử lý phù hợp.",
+      "fix_suggestion": "Ưu tiên gợi ý ăn/uống gần, ít lựa chọn, dễ đi.",
+      "severity": "HIGH"
+    }
+  ],
+  "replayable": true
+}

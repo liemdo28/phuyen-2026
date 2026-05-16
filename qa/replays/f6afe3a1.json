@@ -1,0 +1,19 @@
+{
+  "session_id": "f6afe3a1",
+  "user_message": "trời mưa rồi kế hoạch hủy hết giờ đi đâu với bé",
+  "detected_intent": "emotional_exhaustion",
+  "audit_result": "FAIL",
+  "severity": "HIGH",
+  "violations": [
+    {
+      "rule": "missed_weather_intent",
+      "severity": "HIGH",
+      "reason": "User asking about weather but AI didn't provide weather info",
+      "fix_suggestion": "Detect weather intent and provide weather information directly",
+      "dimension": "intent_understanding"
+    }
+  ],
+  "persona_type": "gen_z",
+  "emotional_state": "stressed",
+  "replayable": true
+}

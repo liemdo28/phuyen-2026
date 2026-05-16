@@ -1,0 +1,26 @@
+{
+  "session_id": "dddcbc20",
+  "user_message": "ừ thôi kệ gợi ý gì cũng được mệt rồi",
+  "detected_intent": "emotional_exhaustion",
+  "audit_result": "PASS",
+  "severity": "LOW",
+  "violations": [
+    {
+      "rule": "response_too_long_for_fatigue_level",
+      "severity": "HIGH",
+      "reason": "Fatigue level completely_done: max 100 chars, got 113",
+      "fix_suggestion": "Adjust response for user's fatigue level",
+      "dimension": "emotional_awareness"
+    },
+    {
+      "rule": "ambitious_suggestion_for_exhausted_user",
+      "severity": "HIGH",
+      "reason": "AI suggested sightseeing to exhausted user",
+      "fix_suggestion": "Adjust response for user's fatigue level",
+      "dimension": "emotional_awareness"
+    }
+  ],
+  "persona_type": "exhausted_traveler",
+  "emotional_state": "burnout",
+  "replayable": true
+}

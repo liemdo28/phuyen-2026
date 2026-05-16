@@ -1,0 +1,19 @@
+{
+  "session_id": "24a71010",
+  "user_message": "Ừ thì đang bị lạc một tí thôi",
+  "detected_intent": "sarcasm",
+  "audit_result": "PASS",
+  "severity": "LOW",
+  "violations": [
+    {
+      "rule": "no_empathy_for_sarcastic_user",
+      "severity": "MEDIUM",
+      "reason": "AI didn't show empathy when user was being sarcastic (disguised complaint)",
+      "fix_suggestion": "Detect sarcasm and respond to underlying intent",
+      "dimension": "emotional_awareness"
+    }
+  ],
+  "persona_type": "angry_customer",
+  "emotional_state": null,
+  "replayable": true
+}

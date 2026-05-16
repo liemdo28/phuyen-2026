@@ -1,0 +1,26 @@
+{
+  "session_id": "771c9963",
+  "user_message": "toi muon | di Ganh Da Dia | co phai di xa khong",
+  "detected_intent": "fragmented_order",
+  "audit_result": "FAIL",
+  "severity": "HIGH",
+  "violations": [
+    {
+      "rule": "corporate_support_language",
+      "severity": "HIGH",
+      "reason": "AI sounds like corporate support bot: ['please contact support']",
+      "fix_suggestion": "Use natural, human language. This is a travel companion, not a support ticket system.",
+      "dimension": "human_naturalness"
+    },
+    {
+      "rule": "unhelpful_non_answer",
+      "severity": "HIGH",
+      "reason": "AI admitted it doesn't know without attempting to help",
+      "fix_suggestion": "Always try to give partial help or refer to a reliable source",
+      "dimension": "recommendation_quality"
+    }
+  ],
+  "persona_type": "tourist_domestic",
+  "emotional_state": null,
+  "replayable": true
+}

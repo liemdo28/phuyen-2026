@@ -1,0 +1,19 @@
+{
+  "session_id": "d82369cf",
+  "user_message": "toi bi | ket xe | gan Tuy Hoa | phai lam gi",
+  "detected_intent": "fragmented_order",
+  "audit_result": "FAIL",
+  "severity": "HIGH",
+  "violations": [
+    {
+      "rule": "corporate_support_language",
+      "severity": "HIGH",
+      "reason": "AI sounds like corporate support bot: ['thank you for your feedback', 'our team will']",
+      "fix_suggestion": "Use natural, human language. This is a travel companion, not a support ticket system.",
+      "dimension": "human_naturalness"
+    }
+  ],
+  "persona_type": "older_user",
+  "emotional_state": null,
+  "replayable": true
+}

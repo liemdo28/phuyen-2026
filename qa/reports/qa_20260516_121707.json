@@ -1,0 +1,144 @@
+{
+  "run_id": "qa_20260516_121707",
+  "timestamp": "2026-05-16T12:17:07.248008",
+  "summary": {
+    "total_sessions": 50,
+    "pass_count": 33,
+    "fail_count": 17,
+    "pass_rate": 66.0,
+    "overall_score": 9.63,
+    "grade": "S",
+    "zero_audit_achieved": false
+  },
+  "dimension_averages": {
+    "human_naturalness": 8.11,
+    "slang_understanding": 10.0,
+    "emotional_awareness": 9.74,
+    "travel_orchestration": 9.97,
+    "fatigue_awareness": 9.74,
+    "cultural_understanding": 9.86,
+    "hallucination_risk_score": 10.0,
+    "recommendation_quality": 9.94,
+    "conversation_continuity": 10.0
+  },
+  "worst_dimensions": [
+    "human_naturalness",
+    "emotional_awareness",
+    "fatigue_awareness"
+  ],
+  "improvement_targets": [
+    "✅ All dimensions above threshold — focus on edge cases"
+  ],
+  "regression_status": "STABLE",
+  "critical_violations": [],
+  "dev_fix_queue": [
+    {
+      "priority": 2,
+      "session_id": "86c2d7fc",
+      "rule": "robotic_corporate_tone",
+      "severity": "HIGH",
+      "user_message": "bánh mì khôngg mì 😵",
+      "reason": "AI used robotic/corporate phrases: ['please note that', 'furthermore,', 'as per your request']",
+      "fix_suggestion": "Replace with natural, conversational Vietnamese. Drop formal AI disclaimers.",
+      "dimension": "human_naturalness",
+      "replayable": true,
+      "status": "open"
+    },
+    {
+      "priority": 2,
+      "session_id": "86c2d7fc",
+      "rule": "corporate_support_language",
+      "severity": "HIGH",
+      "user_message": "bánh mì khôngg mì 😵",
+      "reason": "AI sounds like corporate support bot: ['as per']",
+      "fix_suggestion": "Use natural, human language. This is a travel companion, not a support ticket system.",
+      "dimension": "human_naturalness",
+      "replayable": true,
+      "status": "open"
+    },
+    {
+      "priority": 2,
+      "session_id": "409ff7a9",
+      "rule": "missed_weather_intent",
+      "severity": "HIGH",
+      "user_message": "trời mưa rồi kế hoạch hủy hết giờ đi đâu với bé",
+      "reason": "User mentioned rain/weather but AI didn't acknowledge weather or suggest alternatives",
+      "fix_suggestion": "Detect weather intent and provide weather information directly",
+      "dimension": "intent_understanding",
+      "replayable": true,
+      "status": "open"
+    },
+    {
+      "priority": 2,
+      "session_id": "7664db54",
+      "rule": "language_mismatch",
+      "severity": "HIGH",
+      "user_message": "Chỗ này ăn được vậy hả?",
+      "reason": "User wrote in Vietnamese but AI responded in English",
+      "fix_suggestion": "Always respond in the same language as the user",
+      "dimension": "cultural_understanding",
+      "replayable": true,
+      "status": "open"
+    },
+    {
+      "priority": 2,
+      "session_id": "dc15c280",
+      "rule": "missed_budget_context",
+      "severity": "HIGH",
+      "user_message": "500k | hai san | trua",
+      "reason": "User specified budget 500000đ but AI ignored it",
+      "fix_suggestion": "Merge all message fragments into one coherent intent before responding",
+      "dimension": "context_understanding",
+      "replayable": true,
+      "status": "open"
+    },
+    {
+      "priority": 2,
+      "session_id": "e41e1a01",
+      "rule": "response_too_long_for_fatigue_level",
+      "severity": "HIGH",
+      "user_message": "mệt vl không đi nổi gần thôi nha",
+      "reason": "Fatigue level completely_done: max 100 chars, got 113",
+      "fix_suggestion": "Adjust response for user's fatigue level",
+      "dimension": "emotional_awareness",
+      "replayable": true,
+      "status": "open"
+    },
+    {
+      "priority": 2,
+      "session_id": "e41e1a01",
+      "rule": "ambitious_suggestion_for_exhausted_user",
+      "severity": "HIGH",
+      "user_message": "mệt vl không đi nổi gần thôi nha",
+      "reason": "AI suggested sightseeing to exhausted user",
+      "fix_suggestion": "Adjust response for user's fatigue level",
+      "dimension": "emotional_awareness",
+      "replayable": true,
+      "status": "open"
+    },
+    {
+      "priority": 3,
+      "session_id": "783c17db",
+      "rule": "no_empathy_for_sarcastic_user",
+      "severity": "MEDIUM",
+      "user_message": "Không sao, tôi sẽ tự tìm vậy",
+      "reason": "AI didn't show empathy when user was being sarcastic (disguised complaint)",
+      "fix_suggestion": "Detect sarcasm and respond to underlying intent",
+      "dimension": "emotional_awareness",
+      "replayable": true,
+      "status": "open"
+    },
+    {
+      "priority": 3,
+      "session_id": "40af9fbb",
+      "rule": "choice_overload",
+      "severity": "MEDIUM",
+      "user_message": "chỗ này oke đấy nhỉ haha",
+      "reason": "AI listed 15 options — too many choices overwhelm users",
+      "fix_suggestion": "Limit to 2-3 best options. Make a recommendation instead of listing everything.",
+      "dimension": "recommendation_quality",
+      "replayable": true,
+      "status": "open"
+    }
+  ]
+}

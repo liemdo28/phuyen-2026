@@ -1,0 +1,19 @@
+{
+  "session_id": "eda66057",
+  "user_message": "NGON VL LUON AY 😅",
+  "detected_intent": "nightlife",
+  "audit_result": "FAIL",
+  "severity": "HIGH",
+  "violations": [
+    {
+      "rule": "corporate_support_language",
+      "severity": "HIGH",
+      "reason": "AI sounds like corporate support bot: ['thank you for your feedback', 'our team will']",
+      "fix_suggestion": "Use natural, human language. This is a travel companion, not a support ticket system.",
+      "dimension": "human_naturalness"
+    }
+  ],
+  "persona_type": "drunk_user",
+  "emotional_state": "drunk",
+  "replayable": true
+}

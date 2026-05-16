@@ -1,0 +1,26 @@
+{
+  "session_id": "494c9812",
+  "user_message": "mệt rồi đi đâu nghỉ đi",
+  "detected_intent": "emotional_exhaustion",
+  "audit_result": "WARNING",
+  "severity": "MEDIUM",
+  "violations": [
+    {
+      "rule": "choice_overload",
+      "severity": "MEDIUM",
+      "reason": "AI listed 15 options — too many choices overwhelm users",
+      "fix_suggestion": "Limit to 2-3 best options. Make a recommendation instead of listing everything.",
+      "dimension": "recommendation_quality"
+    },
+    {
+      "rule": "response_too_long_for_fatigue_level",
+      "severity": "HIGH",
+      "reason": "Fatigue level completely_done: max 100 chars, got 386",
+      "fix_suggestion": "Adjust response for user's fatigue level",
+      "dimension": "emotional_awareness"
+    }
+  ],
+  "persona_type": "no_accent",
+  "emotional_state": "sarcastic",
+  "replayable": true
+}

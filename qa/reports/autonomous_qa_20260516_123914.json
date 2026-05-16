@@ -1,0 +1,30 @@
+{
+  "run_id": "autonomous_qa_20260516_123914",
+  "generated_at": "2026-05-16T12:39:14.456130",
+  "summary": {
+    "generated_at": "2026-05-16T12:39:14.456130",
+    "session_count": 5,
+    "violation_count": 2,
+    "pass_count": 3,
+    "fail_count": 2,
+    "zero_audit_achieved": false
+  },
+  "dev_fix_queue": [
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "🧪 Running QA Batch (50 sessions)...",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    },
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "File \"/Users/liemdo/phuyen-2026/qa/run_qa.py\", line 296, in main",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    }
+  ]
+}

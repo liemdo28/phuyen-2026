@@ -1,0 +1,19 @@
+{
+  "session_id": "ca729d6f",
+  "user_message": "mưa rồi ơi trời",
+  "detected_intent": "travel_chaos",
+  "audit_result": "FAIL",
+  "severity": "HIGH",
+  "violations": [
+    {
+      "rule": "missed_weather_intent",
+      "severity": "HIGH",
+      "reason": "User asking about weather but AI didn't provide weather info",
+      "fix_suggestion": "Detect weather intent and provide weather information directly",
+      "dimension": "intent_understanding"
+    }
+  ],
+  "persona_type": "older_user",
+  "emotional_state": null,
+  "replayable": true
+}

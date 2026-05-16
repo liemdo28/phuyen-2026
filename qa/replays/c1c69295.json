@@ -1,0 +1,19 @@
+{
+  "session_id": "c1c69295",
+  "user_message": "Ừ đúng rồi, quán đó tuyệt vời lắm 🙄",
+  "detected_intent": "sarcasm",
+  "audit_result": "PASS",
+  "severity": "LOW",
+  "violations": [
+    {
+      "rule": "no_empathy_for_sarcastic_user",
+      "severity": "MEDIUM",
+      "reason": "AI didn't show empathy when user was being sarcastic (disguised complaint)",
+      "fix_suggestion": "Detect sarcasm and respond to underlying intent",
+      "dimension": "emotional_awareness"
+    }
+  ],
+  "persona_type": "older_user",
+  "emotional_state": null,
+  "replayable": true
+}

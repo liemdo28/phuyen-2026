@@ -1,0 +1,26 @@
+{
+  "session_id": "92d1cb30",
+  "user_message": "lowkey đói highkey muốn hải sản",
+  "detected_intent": "slang_casual",
+  "audit_result": "FAIL",
+  "severity": "HIGH",
+  "violations": [
+    {
+      "rule": "missed_food_intent",
+      "severity": "HIGH",
+      "reason": "User asking about food but AI didn't provide food recommendations",
+      "fix_suggestion": "Detect food intent and provide food information directly",
+      "dimension": "intent_understanding"
+    },
+    {
+      "rule": "choice_overload",
+      "severity": "MEDIUM",
+      "reason": "AI listed 15 options — too many choices overwhelm users",
+      "fix_suggestion": "Limit to 2-3 best options. Make a recommendation instead of listing everything.",
+      "dimension": "recommendation_quality"
+    }
+  ],
+  "persona_type": "gen_z",
+  "emotional_state": null,
+  "replayable": true
+}

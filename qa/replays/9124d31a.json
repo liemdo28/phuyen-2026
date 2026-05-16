@@ -1,0 +1,19 @@
+{
+  "session_id": "9124d31a",
+  "user_message": "mệt vl không đi nổi gần thôi nha",
+  "detected_intent": "emotional_exhaustion",
+  "audit_result": "PASS",
+  "severity": "LOW",
+  "violations": [
+    {
+      "rule": "response_too_long_for_fatigue_level",
+      "severity": "HIGH",
+      "reason": "Fatigue level completely_done: max 100 chars, got 185",
+      "fix_suggestion": "Adjust response for user's fatigue level",
+      "dimension": "emotional_awareness"
+    }
+  ],
+  "persona_type": "angry_customer",
+  "emotional_state": "exhausted",
+  "replayable": true
+}

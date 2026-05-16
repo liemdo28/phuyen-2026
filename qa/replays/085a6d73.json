@@ -1,0 +1,23 @@
+{
+  "session_id": "085a6d73",
+  "user_message": "toi bi | ket xe | gan Tuy Hoa | phai lam gi",
+  "ai_response": "[HTTP 404]",
+  "audit_result": "FAIL",
+  "violations": [
+    {
+      "rule": "missed_food_need",
+      "dimension": "travel_suitability",
+      "reason": "User đang hỏi ăn/uống nhưng response không đưa hướng xử lý phù hợp.",
+      "fix_suggestion": "Ưu tiên gợi ý ăn/uống gần, ít lựa chọn, dễ đi.",
+      "severity": "HIGH"
+    },
+    {
+      "rule": "missed_location_guidance",
+      "dimension": "routing_quality",
+      "reason": "Query có yếu tố vị trí nhưng response không điều hướng theo địa điểm.",
+      "fix_suggestion": "Xin vị trí hoặc địa điểm cụ thể khi thiếu geolocation.",
+      "severity": "MEDIUM"
+    }
+  ],
+  "replayable": true
+}

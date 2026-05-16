@@ -1,0 +1,19 @@
+{
+  "session_id": "e2b49e42",
+  "user_message": "Có chỗ nào nghe nhạc live không?",
+  "detected_intent": "nightlife",
+  "audit_result": "FAIL",
+  "severity": "HIGH",
+  "violations": [
+    {
+      "rule": "missed_location_intent",
+      "severity": "HIGH",
+      "reason": "User asking for directions/location but AI didn't provide navigation help",
+      "fix_suggestion": "Detect location intent and provide location information directly",
+      "dimension": "intent_understanding"
+    }
+  ],
+  "persona_type": "no_accent",
+  "emotional_state": "sober_planning",
+  "replayable": true
+}

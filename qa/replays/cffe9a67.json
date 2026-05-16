@@ -1,0 +1,19 @@
+{
+  "session_id": "cffe9a67",
+  "user_message": "chỉ muốn nằm nghỉ",
+  "detected_intent": "travel_chaos",
+  "audit_result": "FAIL",
+  "severity": "HIGH",
+  "violations": [
+    {
+      "rule": "energetic_suggestion_to_exhausted_user",
+      "severity": "HIGH",
+      "reason": "User is exhausted but AI suggests more activities",
+      "fix_suggestion": "Suggest immediate rest, quiet spot, or nearby food. No more sightseeing.",
+      "dimension": "emotional_awareness"
+    }
+  ],
+  "persona_type": "hungry_traveler",
+  "emotional_state": null,
+  "replayable": true
+}

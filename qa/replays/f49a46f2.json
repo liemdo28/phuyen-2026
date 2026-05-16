@@ -1,0 +1,26 @@
+{
+  "session_id": "f49a46f2",
+  "user_message": "đói LẮMM nhanh gợi ý đi không chịu nổi",
+  "detected_intent": "emotional_exhaustion",
+  "audit_result": "FAIL",
+  "severity": "HIGH",
+  "violations": [
+    {
+      "rule": "response_too_long_for_fatigue_level",
+      "severity": "HIGH",
+      "reason": "Fatigue level completely_done: max 100 chars, got 110",
+      "fix_suggestion": "Adjust response for user's fatigue level",
+      "dimension": "emotional_awareness"
+    },
+    {
+      "rule": "no_rest_suggestion_when_needed",
+      "severity": "MEDIUM",
+      "reason": "User needs rest but AI didn't suggest it",
+      "fix_suggestion": "Adjust response for user's fatigue level",
+      "dimension": "emotional_awareness"
+    }
+  ],
+  "persona_type": "stressed_traveler",
+  "emotional_state": "hungry_irritable",
+  "replayable": true
+}

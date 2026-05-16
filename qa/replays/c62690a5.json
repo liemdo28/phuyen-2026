@@ -1,0 +1,26 @@
+{
+  "session_id": "c62690a5",
+  "user_message": "muon an | hai san tuoi | gan day thoi",
+  "detected_intent": "fragmented_order",
+  "audit_result": "FAIL",
+  "severity": "HIGH",
+  "violations": [
+    {
+      "rule": "robotic_corporate_tone",
+      "severity": "HIGH",
+      "reason": "AI used robotic/corporate phrases: ['please note that', 'furthermore', 'as per your request']",
+      "fix_suggestion": "Replace with natural, conversational Vietnamese. Drop formal AI disclaimers.",
+      "dimension": "human_naturalness"
+    },
+    {
+      "rule": "corporate_support_language",
+      "severity": "HIGH",
+      "reason": "AI sounds like corporate support bot: ['as per']",
+      "fix_suggestion": "Use natural, human language. This is a travel companion, not a support ticket system.",
+      "dimension": "human_naturalness"
+    }
+  ],
+  "persona_type": "exhausted_traveler",
+  "emotional_state": null,
+  "replayable": true
+}

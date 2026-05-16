@@ -1,0 +1,19 @@
+{
+  "session_id": "dc0a1e20",
+  "user_message": "đông quá trời luôn",
+  "detected_intent": "travel_chaos",
+  "audit_result": "FAIL",
+  "severity": "HIGH",
+  "violations": [
+    {
+      "rule": "missed_weather_intent",
+      "severity": "HIGH",
+      "reason": "User asking about weather but AI didn't provide weather info",
+      "fix_suggestion": "Detect weather intent and provide weather information directly",
+      "dimension": "intent_understanding"
+    }
+  ],
+  "persona_type": "no_accent",
+  "emotional_state": null,
+  "replayable": true
+}

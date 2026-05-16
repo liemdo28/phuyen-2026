@@ -1,0 +1,165 @@
+{
+  "run_id": "qa_20260516_121105",
+  "timestamp": "2026-05-16T12:11:05.780880",
+  "summary": {
+    "total_sessions": 50,
+    "pass_count": 34,
+    "fail_count": 16,
+    "pass_rate": 68.0,
+    "overall_score": 9.55,
+    "grade": "S",
+    "zero_audit_achieved": false
+  },
+  "dimension_averages": {
+    "human_naturalness": 7.75,
+    "slang_understanding": 9.89,
+    "emotional_awareness": 9.94,
+    "travel_orchestration": 9.93,
+    "fatigue_awareness": 9.94,
+    "cultural_understanding": 9.32,
+    "hallucination_risk_score": 10.0,
+    "recommendation_quality": 9.82,
+    "conversation_continuity": 10.0
+  },
+  "worst_dimensions": [
+    "human_naturalness",
+    "cultural_understanding",
+    "recommendation_quality"
+  ],
+  "improvement_targets": [
+    "🚨 CRITICAL: 1 critical violations must be fixed first",
+    "🔴 Human Naturalness: 7.8/10 — needs +2% improvement"
+  ],
+  "regression_status": "REGRESSION_RISK",
+  "critical_violations": [
+    {
+      "session_id": "ce8afa9d",
+      "rule": "missed_child_beach_safety",
+      "message": "bé 4 tuổi có tắm biển được không sóng lớn",
+      "reason": "User mentioned child near beach/water but AI didn't address safety",
+      "fix": "Always address child water safety proactively when relevant"
+    }
+  ],
+  "dev_fix_queue": [
+    {
+      "priority": 1,
+      "session_id": "ce8afa9d",
+      "rule": "missed_child_beach_safety",
+      "severity": "CRITICAL",
+      "user_message": "bé 4 tuổi có tắm biển được không sóng lớn",
+      "reason": "User mentioned child near beach/water but AI didn't address safety",
+      "fix_suggestion": "Always address child water safety proactively when relevant",
+      "dimension": "cultural_understanding",
+      "replayable": true,
+      "status": "open"
+    },
+    {
+      "priority": 2,
+      "session_id": "4728c05f",
+      "rule": "robotic_corporate_tone",
+      "severity": "HIGH",
+      "user_message": "Có chỗ nào nghe nhạc live không?",
+      "reason": "AI used robotic/corporate phrases: ['i am an ai', 'i cannot provide', 'please note that']",
+      "fix_suggestion": "Replace with natural, conversational Vietnamese. Drop formal AI disclaimers.",
+      "dimension": "human_naturalness",
+      "replayable": true,
+      "status": "open"
+    },
+    {
+      "priority": 2,
+      "session_id": "4728c05f",
+      "rule": "corporate_support_language",
+      "severity": "HIGH",
+      "user_message": "Có chỗ nào nghe nhạc live không?",
+      "reason": "AI sounds like corporate support bot: ['as per']",
+      "fix_suggestion": "Use natural, human language. This is a travel companion, not a support ticket system.",
+      "dimension": "human_naturalness",
+      "replayable": true,
+      "status": "open"
+    },
+    {
+      "priority": 2,
+      "session_id": "4728c05f",
+      "rule": "language_mismatch",
+      "severity": "HIGH",
+      "user_message": "Có chỗ nào nghe nhạc live không?",
+      "reason": "User wrote in Vietnamese but AI responded in English",
+      "fix_suggestion": "Always respond in the same language as the user",
+      "dimension": "cultural_understanding",
+      "replayable": true,
+      "status": "open"
+    },
+    {
+      "priority": 2,
+      "session_id": "7df63ead",
+      "rule": "missed_food_intent",
+      "severity": "HIGH",
+      "user_message": "ez ez ăn gì đỉnh đỉnh thôi",
+      "reason": "User asking about food but AI didn't provide food recommendations",
+      "fix_suggestion": "Detect food intent and provide food information directly",
+      "dimension": "intent_understanding",
+      "replayable": true,
+      "status": "open"
+    },
+    {
+      "priority": 2,
+      "session_id": "7a0d869b",
+      "rule": "unhelpful_non_answer",
+      "severity": "HIGH",
+      "user_message": "Xin chào",
+      "reason": "AI admitted it doesn't know without attempting to help",
+      "fix_suggestion": "Always try to give partial help or refer to a reliable source",
+      "dimension": "recommendation_quality",
+      "replayable": true,
+      "status": "open"
+    },
+    {
+      "priority": 2,
+      "session_id": "b7dc2f73",
+      "rule": "missed_budget_context",
+      "severity": "HIGH",
+      "user_message": "500k | hai san | trua",
+      "reason": "User specified budget 500000đ but AI ignored it",
+      "fix_suggestion": "Merge all message fragments into one coherent intent before responding",
+      "dimension": "context_understanding",
+      "replayable": true,
+      "status": "open"
+    },
+    {
+      "priority": 2,
+      "session_id": "0aa3b4a0",
+      "rule": "missed_weather_intent",
+      "severity": "HIGH",
+      "user_message": "trời mưa rồi kế hoạch hủy hết giờ đi đâu với bé",
+      "reason": "User mentioned rain/weather but AI didn't acknowledge weather or suggest alternatives",
+      "fix_suggestion": "Detect weather intent and provide weather information directly",
+      "dimension": "intent_understanding",
+      "replayable": true,
+      "status": "open"
+    },
+    {
+      "priority": 2,
+      "session_id": "bc12916f",
+      "rule": "missed_hunger_signal",
+      "severity": "HIGH",
+      "user_message": "đói quá về đâu ăn được không",
+      "reason": "User said they're hungry but AI didn't suggest food",
+      "fix_suggestion": "When user says 'đói quá', immediately suggest nearby food options",
+      "dimension": "slang_understanding",
+      "replayable": true,
+      "status": "open"
+    },
+    {
+      "priority": 3,
+      "session_id": "15ea94c5",
+      "rule": "no_empathy_for_sarcastic_user",
+      "severity": "MEDIUM",
+      "user_message": "Ừ thì đang bị lạc một tí thôi",
+      "reason": "AI didn't show empathy when user was being sarcastic (disguised complaint)",
+      "fix_suggestion": "Detect sarcasm and respond to underlying intent",
+      "dimension": "emotional_awareness",
+      "replayable": true,
+      "status": "open"
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "session_id": "b2802244",
+  "user_message": "muon an | hai san tuoi | gan day thoi",
+  "detected_intent": "fragmented_order",
+  "audit_result": "FAIL",
+  "severity": "HIGH",
+  "violations": [
+    {
+      "rule": "corporate_support_language",
+      "severity": "HIGH",
+      "reason": "AI sounds like corporate support bot: ['please contact support']",
+      "fix_suggestion": "Use natural, human language. This is a travel companion, not a support ticket system.",
+      "dimension": "human_naturalness"
+    },
+    {
+      "rule": "missed_food_intent",
+      "severity": "HIGH",
+      "reason": "User asking about food but AI didn't provide food recommendations",
+      "fix_suggestion": "Detect food intent and provide food information directly",
+      "dimension": "intent_understanding"
+    },
+    {
+      "rule": "unhelpful_non_answer",
+      "severity": "HIGH",
+      "reason": "AI admitted it doesn't know without attempting to help",
+      "fix_suggestion": "Always try to give partial help or refer to a reliable source",
+      "dimension": "recommendation_quality"
+    }
+  ],
+  "persona_type": "meme_user",
+  "emotional_state": null,
+  "replayable": true
+}
