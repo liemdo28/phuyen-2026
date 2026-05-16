@@ -8,16 +8,22 @@ import axios from 'axios';
 class AIModel {
   constructor() {
     this.provider = config.ai.provider;
+    this.model = this.provider === 'openai' ? config.ai.openai.model : null;
+    this._clientReady = this._initClient();
+  }
+
+  async _initClient() {
     if (this.provider === 'openai') {
-      this.client = new (await import('openai')).default({
+      const { default: OpenAI } = await import('openai');
+      this.client = new OpenAI({
         apiKey: config.ai.openai.apiKey,
         baseURL: config.ai.openai.baseUrl,
       });
-      this.model = config.ai.openai.model;
     }
   }
 
   async complete(prompt, systemPrompt = '', conversationHistory = []) {
+    await this._clientReady;
     if (this.provider === 'openai') {
       return this._openaiComplete(prompt, systemPrompt, conversationHistory);
     } else {
@@ -86,6 +92,7 @@ class AIModel {
 
   // ── Vision (image understanding) ──────────────────────
   async analyzeImage(imageBase64, prompt) {
+    await this._clientReady;
     if (this.provider === 'openai') {
       const response = await this.client.chat.completions.create({
         model: 'gpt-4o-mini',
@@ -116,6 +123,7 @@ class AIModel {
 
   // ── Speech-to-text ────────────────────────────────────
   async transcribe(audioBase64, mimeType = 'audio/ogg') {
+    await this._clientReady;
     if (this.provider === 'openai') {
       const response = await this.client.audio.transcriptions.create({
         model: 'whisper-1',
