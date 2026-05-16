@@ -137,31 +137,70 @@ def _heuristic_companion_reply(text: str) -> str:
     """
     Fallback when OpenAI is unavailable.
     Uses the intelligence patterns for richer matching.
+    NOTE: Always responds in Vietnamese regardless of input language.
     """
     t = text.lower()
-    # Fatigue / exhaustion — most critical
+
+    # Child water safety — CRITICAL, must check before anything else
+    child_water = any(w in t for w in [
+        "bé bơi", "bé tắm", "cho bé ra biển", "bé có tắm", "bé xuống nước",
+        "có sứa", "bé ra biển", "an toàn không", "nuoc co sau",
+    ])
+    if child_water:
+        return (
+            "Bãi Xép an toàn nhất cho bé — sóng nhỏ, nước trong. "
+            "Bé 4 tuổi cần người lớn cầm tay trực tiếp, nước tới đầu gối là giới hạn. "
+            "Kiểm tra sứa 5 phút trước khi xuống nhé — tháng 5 thỉnh thoảng có."
+        )
+
+    # Sarcasm detection — address underlying complaint
+    if any(w in t for w in ["🙄", "ừ đúng rồi", "tuyệt vời lắm", "giỏi thật", "hay thật"]):
+        return "Nghe có vẻ không như kỳ vọng — xin lỗi nhé. Muốn mình gợi ý chỗ khác không? Nói khu vực đang ở, mình tìm ngay."
+
+    # Extreme fatigue — ULTRA SHORT, max 1 sentence
     if any(w in t for w in [
-        "mệt xỉu", "mệt muốn chết", "kiệt sức", "hết pin",
-        "đuối quá", "die rồi", "mệt lắm", "mệt quá", "mệt rồi", "mệt",
-        "buồn ngủ", "buồn ngủ quá", "ngủ gật",
+        "mệt xỉu", "kiệt sức rồi", "không còn sức", "sắp ngất",
+        "lần này cuối cùng", "mệt muốn chết", "die rồi", "hết pin",
+    ]):
+        return "Mệt rồi thì về nghỉ thôi, mình tính tiếp sau."
+
+    # Regular fatigue
+    if any(w in t for w in [
+        "mệt lắm", "mệt quá", "mệt rồi", "mệt",
+        "buồn ngủ", "buồn ngủ quá", "ngủ gật", "đuối quá",
     ]):
         return "Mệt rồi thì nghỉ đi, đừng ép. Tìm cái quán cafe gần đây ngồi nhâm nhi, hoặc về khách sạn nằm một lúc. Không cần phải đi thêm đâu hết."
-    # Hunger — second most urgent
+
+    # Seafood request (with/without accent)
+    if any(w in t for w in [
+        "hải sản", "hai san", "tôm", "mực", "cá tươi", "seafood",
+        "muon an hai san", "muốn ăn hải sản",
+    ]):
+        return "Hải sản tươi thì ghé khu cảng cá Tuy Hòa hoặc lên Sông Cầu — tôm hùm, cá ngừ, mực ống đều tươi sống. Bạn muốn trong thành phố hay chạy lên Sông Cầu?"
+
+    # Hunger — (with no-accent variants: doi qua, doi roi)
     if any(w in t for w in [
         "đói xỉu", "đói muốn chết", "đói bẹp", "đói cồn cào", "bụng kêu",
         "đói lắm", "đói rồi", "đói quá", "đói", "chưa ăn gì",
         "ăn gì", "ăn ở đâu", "kiếm gì ăn",
+        "doi qua", "doi roi", "doi lam", "an gi",
     ]):
         return "Đói thì ghé quán bún cá ngừ hoặc bánh căn gần trung tâm — địa phương nhất, giá tốt, bé cũng ăn được. Bạn đang ở khu nào?"
+
     # Drinking / nightlife
     if any(w in t for w in [
         "nhậu", "bia", "làm vài lon", "quất vài", "quán nhậu", "đi bar",
     ]):
         return "Nhậu thì kiếm hải sản sông biển hoặc tôm hùm Sông Cầu — tươi, ngon, mồi tốt. Muốn mình chỉ quán cụ thể không?"
-    # Rain redirect
+
+    # Rain redirect — especially with kid
     if any(w in t for w in [
         "mưa như trút", "mưa to", "mưa rồi", "mưa", "trời xấu", "bão",
+        "kế hoạch hủy",
     ]):
+        has_kid = any(k in t for k in ["bé", "con", "trẻ em"])
+        if has_kid:
+            return "Mưa thì vào trong thôi — ghé Trung tâm thương mại Vincom Tuy Hòa cho bé chơi, hoặc ăn phở bò trong quán có mái. Mưa Phú Yên thường tạnh sau 1-2h."
         return "Mưa rồi thì tạm hoãn biển, không vội. Ghé cafe trong thành phố ngồi chờ, hoặc dạo chợ Tuy Hòa cho mát. Mưa Phú Yên thường tạnh nhanh thôi."
     # Heat
     if any(w in t for w in [
