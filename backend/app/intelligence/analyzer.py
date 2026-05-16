@@ -133,6 +133,9 @@ class VietnameseMessageAnalysis:
     context_tags: list[str] = field(default_factory=list)  # summary tags for prompt injection
     routing_hints: list[str] = field(default_factory=list) # routing suggestions
 
+    # ── Raw text (for memory profile updates) ─────────────────────────────────
+    raw_text: str = ""         # original message text (set by analyze_message)
+
 
 def analyze_message(text: str) -> VietnameseMessageAnalysis:
     """
@@ -199,6 +202,7 @@ def analyze_message(text: str) -> VietnameseMessageAnalysis:
     # ── Step 10: Build context tags & routing hints ───────────────────────────
     analysis.context_tags = _build_context_tags(analysis)
     analysis.routing_hints = _build_routing_hints(analysis)
+    analysis.raw_text = text
 
     return analysis
 

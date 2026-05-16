@@ -60,6 +60,13 @@ from app.services.workflow_engine import WorkflowEngine
 from app.social.group_dynamics import GroupDynamicsState
 from app.society.agent_society import TravelAgentSociety
 from app.society.agent_society import SocietyDecision
+from app.memory.user_profile import (
+    load_profile, build_profile_updates, record_place_visited,
+    UserMemoryProfile,
+)
+from app.companion.chill_resolver import ChillContextResolver
+from app.companion.flow_orchestrator import DailyFlowOrchestrator
+from app.companion.movement_router import MovementResistanceRouter
 
 # Domains routed to sheets workflow (not companion AI)
 _STRUCTURED_DOMAINS = {"expense", "task", "inventory", "revenue", "crm"}
@@ -138,6 +145,10 @@ class TelegramOrchestrator:
         self.merger = ConversationMerger()
         # Phase: Google Sheet Location Intelligence — natural language place search
         self.location_intel = get_location_intelligence()
+        # Human-like AI Companion Systems
+        self.chill_resolver = ChillContextResolver()
+        self.flow_orchestrator = DailyFlowOrchestrator()
+        self.movement_router = MovementResistanceRouter()
 
     async def handle_update(self, update: TelegramUpdate) -> None:
         message = update.message
@@ -656,14 +667,67 @@ class TelegramOrchestrator:
     ) -> AssistantResponse:
         trip_state = self.trip_context.get_state()
         trip_context_str = self.trip_context.format_for_prompt(trip_state, companion_state=companion_state)
-        # Build interaction guidance: TravelBrain context + Vietnamese Intelligence Graph
+
+        # ── Human-like companion context layers ──────────────────────────────
+        now = datetime.now()
+
+        # 1. User Memory Profile — knows food prefs, places visited, movement history
+        user_profile = load_profile(context.preferences)
+        memory_context = user_profile.format_for_prompt()
+
+        # 2. Chill resolver — if user wants to "chill", figure out what kind
+        chill_context = ""
+        if message_analysis and any(w in message_text.lower() for w in [
+            "chill", "chill chill", "kiếm chỗ chill", "chỗ ngồi", "nghỉ nhẹ",
+        ]):
+            chill_rec = self.chill_resolver.resolve_from_analysis(message_analysis, now)
+            chill_context = f"## Chill Context\n{chill_rec.prompt_hint}\nVí dụ: {', '.join(chill_rec.example_places[:2])}"
+
+        # 3. Daily flow — what comes NEXT in the emotional experience arc
+        places_visited = list(context.preferences.get("mem_places_visited", []))
+        flow_suggestion = self.flow_orchestrator.suggest_next(
+            now=now,
+            fatigue=message_analysis.fatigue if message_analysis else 0.0,
+            places_visited=places_visited,
+            crowd_tolerance=user_profile.crowd_tolerance,
+            movement_tolerance=user_profile.movement_tolerance,
+        )
+        flow_context = self.flow_orchestrator.format_for_prompt(flow_suggestion)
+
+        # 4. Movement resistance — filter suggestions by distance if needed
+        movement_profile = self.movement_router.analyze(
+            message_text,
+            profile_movement_tolerance=user_profile.movement_tolerance,
+        )
+        constraints = self.movement_router.build_constraints(
+            movement_profile,
+            fatigue=message_analysis.fatigue if message_analysis else 0.0,
+        )
+        movement_context = self.movement_router.format_for_prompt(constraints)
+
+        # 5. TravelBrain + Intelligence Graph
         brain_guidance = self._build_companion_interaction_guidance(
             travel_brain_state,
             calm_decision,
             recovery_plan,
         )
         behavior_context = build_prompt_context(message_analysis) if message_analysis else ""
-        interaction_guidance = "\n\n".join(filter(None, [brain_guidance, behavior_context]))
+
+        # Combine all context layers — most specific first
+        interaction_guidance = "\n\n".join(filter(None, [
+            memory_context,
+            chill_context,
+            flow_context,
+            movement_context,
+            behavior_context,
+            brain_guidance,
+        ]))
+
+        # Persist memory updates from this analysis
+        if message_analysis:
+            profile_updates = build_profile_updates(user_profile, message_analysis, now)
+            await self.memory.update_preferences(context, profile_updates)
+
         conversation_history = _context_to_messages(context)
 
         companion = await self.llm.generate_companion_reply(
