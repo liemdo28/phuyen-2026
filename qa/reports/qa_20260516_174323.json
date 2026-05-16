@@ -1,0 +1,51 @@
+{
+  "run_id": "qa_20260516_174323",
+  "generated_at": "2026-05-16T17:43:23.532561",
+  "summary": {
+    "generated_at": "2026-05-16T17:43:23.532561",
+    "session_count": 20,
+    "violation_count": 4,
+    "pass_count": 16,
+    "fail_count": 4,
+    "zero_audit_achieved": false,
+    "total_sessions": 20,
+    "total_violations": 4,
+    "pass_rate": 80.0,
+    "overall_score": 8.0,
+    "grade": "A"
+  },
+  "dev_fix_queue": [
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "lịch trình hôm nay thế nào",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    },
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "di bien duoc khong",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    },
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "hết hồn sóng to vậy",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    },
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "đi",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    }
+  ]
+}

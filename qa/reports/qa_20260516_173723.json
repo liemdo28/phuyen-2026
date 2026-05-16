@@ -1,0 +1,35 @@
+{
+  "run_id": "qa_20260516_173723",
+  "generated_at": "2026-05-16T17:37:23.114474",
+  "summary": {
+    "generated_at": "2026-05-16T17:37:23.114474",
+    "session_count": 20,
+    "violation_count": 2,
+    "pass_count": 18,
+    "fail_count": 2,
+    "zero_audit_achieved": false,
+    "total_sessions": 20,
+    "total_violations": 2,
+    "pass_rate": 90.0,
+    "overall_score": 9.0,
+    "grade": "S"
+  },
+  "dev_fix_queue": [
+    {
+      "rule": "missed_location_guidance",
+      "severity": "MEDIUM",
+      "user_message": "trời mưa thì đi đâu được",
+      "reason": "User hỏi địa điểm nhưng response không điều hướng theo vị trí.",
+      "fix_suggestion": "Hỏi khu vực đang ở hoặc cung cấp gợi ý địa điểm cụ thể.",
+      "replayable": true
+    },
+    {
+      "rule": "robotic_response",
+      "severity": "HIGH",
+      "user_message": "toi nay co gi vui khong",
+      "reason": "Giọng điệu máy móc hoặc corporate.",
+      "fix_suggestion": "Rút ngắn, nói tự nhiên và Việt hóa hơn.",
+      "replayable": true
+    }
+  ]
+}
