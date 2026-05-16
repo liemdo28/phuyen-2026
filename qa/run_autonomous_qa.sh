@@ -13,7 +13,7 @@ STATE_ROOT="${STATE_DIR:-/tmp}"
 ARTIFACT_ROOT="${QA_ARTIFACT_ROOT:-$STATE_ROOT/qa-artifacts}"
 LOG_ROOT="$ARTIFACT_ROOT/logs"
 RUN_LOG="$LOG_ROOT/autonomous-qa-$(date +%Y%m%d-%H%M%S).log"
-BACKEND_URL="${QA_BACKEND_URL:-https://phuyen-2026.onrender.com}"
+BACKEND_URL="${QA_BACKEND_URL:-https://phuyen-2026-telegram.onrender.com}"
 MAX_SCENARIOS="${QA_MAX_SCENARIOS:-80}"
 MOCK_MODE="${QA_MOCK_MODE:-false}"
 

@@ -61,7 +61,7 @@ services:
       - key: APP_ENV
         value: production
       - key: QA_BACKEND_URL
-        value: https://phuyen-2026.onrender.com
+        value: https://phuyen-2026-telegram.onrender.com
       - key: QA_MAX_SCENARIOS
         value: "80"
       - key: TELEGRAM_BOT_TOKEN
